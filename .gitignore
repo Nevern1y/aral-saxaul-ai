@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+
+# Logs
+*.log
+*.out
+*.err
+
+# Environment
+.env
+.venv/
+env/
+
+# GeoTIFF rasters (too large for git)
+*.tif
+*.tiff
+*.vrt
+
+# Generated outputs
+outputs/
+
+# Inference tiles (intermediate)
+outputs/tiles/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+.DS_Store

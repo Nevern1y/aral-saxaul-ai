@@ -1,0 +1,32 @@
+# Core ML
+xgboost>=2.1
+scikit-learn>=1.5
+shap>=0.46
+optuna>=4.0
+
+# Geospatial
+gdal>=3.9
+rasterio>=1.4
+geopandas>=1.0
+fiona>=1.9
+shapely>=2.0
+pyproj>=3.7
+rioxarray>=0.17
+
+# Visualization
+matplotlib>=3.9
+seaborn>=0.13
+folium>=0.18
+
+# Dashboard
+streamlit>=1.35
+
+# Data
+numpy>=2.0
+pandas>=2.2
+scipy>=1.14
+
+# Utils
+joblib>=1.4
+tqdm>=4.66
+pyyaml>=6.0
