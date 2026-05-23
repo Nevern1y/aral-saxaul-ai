@@ -1,0 +1,16 @@
+Classification Report - Aral Saxaul XGBoost
+============================================================
+Features: NDMI, MSAVI, SI, Slope, TWI, VH, NDWI
+Test set: 1000 samples
+
+                precision    recall  f1-score   support
+
+Unsuitable (0)     1.0000    1.0000    1.0000       850
+  Suitable (1)     1.0000    1.0000    1.0000       150
+
+      accuracy                         1.0000      1000
+     macro avg     1.0000    1.0000    1.0000      1000
+  weighted avg     1.0000    1.0000    1.0000      1000
+
+============================================================
+PR-AUC: 1.0000

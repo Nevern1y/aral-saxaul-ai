@@ -22,11 +22,12 @@ env/
 *.tiff
 *.vrt
 
-# Generated outputs
-outputs/
-
-# Inference tiles (intermediate)
+# Generated outputs — ignore large data, track what dashboard needs
+outputs/data/*.tif
+outputs/data/*.tiff
+outputs/data/*.vrt
 outputs/tiles/
+outputs/phase1_checkpoint.json
 
 # IDE
 .idea/
