@@ -1,4 +1,5 @@
 folium>=0.19
+geopandas>=1.0
 joblib>=1.4
 matplotlib>=3.9
 numpy>=2.0
