@@ -155,7 +155,7 @@ with tab2:
         "Optimal": ["6,558 km\u00b2", "\u2014", "75,165 km\u00b2", "14,962 km\u00b2", "~90K km\u00b2*", "**TBD**"],
         "Статус": ["Archive", "Frozen", "Archive", "Archive", "Betat", "**Goal**"],
     }
-    st.dataframe(pd.DataFrame(comp_data), hide_index=True, use_container_width=True)
+    st.dataframe(pd.DataFrame(comp_data), hide_index=True, width='stretch')
     st.caption("* 90K km\u00b2 включает пустыни вне исторического Арала. "
                "Финальная цифра будет после клиппинга по береговой линии 1960 года.")
 
@@ -171,7 +171,7 @@ with tab3:
         cols = ["pit_code", "S_Point", "Lon_DD", "Lat_DD", "Salinity_pct",
                 "SI", "NDMI", "NDWI", "Cl", "SO4", "Na", "Sand_pct", "Silt_pct"]
         available = [c for c in cols if c in df.columns]
-        st.dataframe(df[available], hide_index=True, use_container_width=True)
+        st.dataframe(df[available], hide_index=True, width='stretch')
 
         st.markdown("### \u0418\u0441\u0442\u043e\u0447\u043d\u0438\u043a \u043a\u043e\u043e\u0440\u0434\u0438\u043d\u0430\u0442")
         st.markdown(
