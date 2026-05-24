@@ -1,5 +1,5 @@
 import streamlit as st
-import streamlit.components.v1 as components
+import html as html_lib
 import numpy as np
 import pandas as pd
 import json
@@ -197,7 +197,10 @@ with tab_logistics:
         plugins.MousePosition().add_to(m)
 
         map_html = m._repr_html_()
-        st.components.v1.html(map_html, height=700, scrolling=True)
+        st.markdown(
+            f'<iframe srcdoc="{html_lib.escape(map_html)}" width="100%" height="700" style="border:none;"></iframe>',
+            unsafe_allow_html=True,
+        )
 
         with st.expander("\U0001f4c2 Список маршрутных файлов (KML)"):
             display_df = filtered[
@@ -322,7 +325,10 @@ with tab_analytics:
     if MAP_PATH.exists():
         with open(MAP_PATH, "r", encoding="utf-8") as f:
             map_html = f.read()
-        components.html(map_html, height=750, scrolling=True)
+        st.markdown(
+            f'<iframe srcdoc="{html_lib.escape(map_html)}" width="100%" height="750" style="border:none;"></iframe>',
+            unsafe_allow_html=True,
+        )
     else:
         st.warning(
             f"\u0424\u0430\u0439\u043b \u043a\u0430\u0440\u0442\u044b \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d: {MAP_PATH}. "
