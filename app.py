@@ -1,5 +1,5 @@
 import streamlit as st
-import html as html_lib
+import streamlit.components.v1 as components
 import numpy as np
 import pandas as pd
 import json
@@ -31,6 +31,23 @@ NDWI_WATER = 0.0
 SLOPE_MAX = 5.0
 
 st.set_page_config(page_title="Aral Saxaul: Платформа Фитомелиорации", layout="wide")
+
+# UI/UX: ограничение ширины дашборда для комфортного чтения на широких экранах
+st.markdown(
+    """
+    <style>
+    .block-container {
+        max-width: 1300px;
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
+    [data-testid="stMetricValue"] {
+        font-size: 1.8rem;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 
 @st.cache_data
@@ -196,11 +213,7 @@ with tab_logistics:
         plugins.Fullscreen().add_to(m)
         plugins.MousePosition().add_to(m)
 
-        map_html = m._repr_html_()
-        st.markdown(
-            f'<iframe srcdoc="{html_lib.escape(map_html)}" width="100%" height="700" style="border:none;"></iframe>',
-            unsafe_allow_html=True,
-        )
+        components.html(m.get_root().render(), height=700)
 
         with st.expander("\U0001f4c2 Список маршрутных файлов (KML)"):
             display_df = filtered[
@@ -325,10 +338,7 @@ with tab_analytics:
     if MAP_PATH.exists():
         with open(MAP_PATH, "r", encoding="utf-8") as f:
             map_html = f.read()
-        st.markdown(
-            f'<iframe srcdoc="{html_lib.escape(map_html)}" width="100%" height="750" style="border:none;"></iframe>',
-            unsafe_allow_html=True,
-        )
+        components.html(map_html, height=750)
     else:
         st.warning(
             f"\u0424\u0430\u0439\u043b \u043a\u0430\u0440\u0442\u044b \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d: {MAP_PATH}. "
