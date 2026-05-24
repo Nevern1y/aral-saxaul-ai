@@ -1,0 +1,264 @@
+# CONTEXT: Aral Saxaul AI — V2.0 Ground Truth Assembly
+
+## Project Goal
+Predict soil salinity (TDS/EC) via satellite remote sensing for the dried Aral Sea bed (Kazakhstan), to identify optimal saxaul planting locations.
+
+## V1.0 (Current)
+- Synthetic labels: `label = 1 if (SI ≥ P85 AND slope ≤ 5) else 0`
+- 5001 training points, XGBoost classifier, Optuna + SHAP
+- SI feature importance: 61.6%, all metrics show 1.0 (suspicious — synthetic labels are deterministic)
+- Output: `suitability_full.tif` (binary probability, float32)
+
+## V2.0 Goal
+Replace synthetic labels with real ground truth: regression model predicting TDS/EC (salinity) from satellite features.
+
+---
+
+# SOURCE FILES (all in F:\OPENCODE PROJECTS\aral-saxaul-ai\)
+
+## 1. AralField(Sheet1).csv — 11 field points with GPS + EC probe
+- 48 columns, utf-8-sig, semicolon, skiprows=3 (header rows 0-2 are Cyrillic)
+- col0 = point ID (S124-S134), col11 = E (longitude), col12 = N (latitude)
+- Coordinates use COMMA as decimal separator (e.g., "60,893604")
+- col24=East EC, col25=South EC, col26=West EC, col27=North EC (all in dS/m)
+- col24 and col27 usually have values; col25/col26 are always NaN
+- Landcover in final column: Shrubland, Bare area, Grassland, Cropland, Mosaic
+- Source: field EC probe readings — portable device measuring soil electric conductivity at surface (~10 cm depth)
+
+**Data:**
+```
+S124: E=60,893604, N=45,588539, EC=0.09/NA/NA/3.14 → mean=1.615 dS/m
+S125: E=60,912059, N=45,608637, EC=1.9/NA/NA/101.3 → mean=51.6 dS/m
+S126: E=60,928608, N=45,624813, EC=0.97/NA/NA/46.2 → mean=23.585 dS/m
+S127: E=60,983600, N=45,648156, EC=0.16/NA/NA/5.7 → mean=2.93 dS/m
+S128: E=60,987777, N=45,656316, EC=0.14/NA/NA/4.18 → mean=2.16 dS/m
+S129: E=61,018802, N=45,657462, EC=0.18/NA/NA/5.64 → mean=2.91 dS/m
+S130: E=61,213133, N=45,725247, EC=0.87/NA/NA/38.1 → mean=19.485 dS/m
+S131: E=61,221228, N=45,754821, EC=0.02/NA/NA/0.7 → mean=0.36 dS/m
+S132: E=61,257944, N=45,815325, EC=0.28/NA/NA/8.84 → mean=4.56 dS/m
+S133: E=61,267256, N=45,847397, EC=0.1/NA/NA/3.25 → mean=1.675 dS/m
+S134: E=61,268779, N=45,945191, EC=1.73/NA/NA/95.2 → mean=48.465 dS/m
+```
+
+**CONCERN:** EC values 51.6 and 101.3 dS/m are extremely high (brine level). Normal saline soil is 4-15 dS/m. Possible that units are mS/cm (same) and these ARE salt crust values on the Aral Sea bed — plausible but should be verified.
+
+## 2. результаты EC,TDS, pH, в.в., гумус(в.в.csv — Full lab chemistry for 20 pits
+- 111 rows × 31 cols, utf-8-sig, semicolon
+- Row 0 = headers, Row 1 = separator (all "-"), Rows 2+ = data
+- Each pit has 5-7 depth layers; first row of each group = top layer
+- col0 = sequential row number, col1 = pit name ("Разрез 1" through "Разрез 20", appears only on first layer), col2 = depth
+- col3=CO3, col5=HCO3, col7=Cl, col9=SO4, col11=Ca, col13=Mg, col15=Na, col17=K (all in ммоль/100г)
+- **col19 = Соленость, % (total salinity percentage) ← V2.0 TARGET**
+- col20 = sum cations, col21 = sum anions
+
+**Top layer salinity % for each pit:**
+```
+Разрез 1: 0.06%  (S124)
+Разрез 2: 0.07%  (S125)
+Разрез 3: 0.05%  (S126)
+Разрез 4: 6.52%  (S127)
+Разрез 5: 31.29% (S128)
+Разрез 6: 1.17%  (S129, tentative)
+Разрез 7: 1.29%  (S130, tentative)
+Разрез 8: 2.42%  (S131)
+Разрез 9: 16.42% (S132)
+Разрез 10: 7.78% (S133)
+Разрез 11: 0.10% (S134)
+```
+
+**IMPORTANT OBSERVATION:** 
+- Разрез 5 (salt crust): Cl=262.4 ммоль/100г, SO4=259.5, Salinity=31.29% — extremely saline crust layer
+- Разрез 4 (surface): Cl=50.8, SO4=49.5, Salinity=6.52%
+- These are high-saline pits where salt accumulates on surface
+- Разрез 1-3: low salinity (0.05-0.07%)
+
+## 3. результаты Арал(Лист2).csv — pH, CO2, moisture for 21 pits
+- 104 rows × 6 cols, utf-8-sig, semicolon
+- Col0 = pit code ("01/20А" through "21/20А"), Col1 = depth, Col2 = moisture %, Col3 = CO2 (carbonates), Col4 = pH
+- Multiple depth rows per pit; first row = top layer
+- "01/20А" = Разрез 1 = pit 1, "02/20А" = pit 2, etc.
+
+## 4. мехсостав 2020, 2021 по типам(Лист4).csv — Sand/Silt/Clay for 21 pits
+- 42 rows × 21 cols
+- 2020 data: col0=pit#, col1=sand%, col3=silt%, col6=clay%, col7=soil texture label
+- 2021 data: col9=pit#, col10=sand%, col12=silt%, col15=clay%, col16=soil texture label
+- Pits 1-21 in both years
+- Sand + Silt + Clay ≈ 100% (via granulometric analysis)
+
+## 5. салыстыру Арал.odt — Cross-reference file (binary ODT)
+- Contains DMM coordinates (N 44°42.270 E 059°46.541) and confirms S-point → pit mapping
+- Screenshots confirmed mapping for S124-S128, S131-S134 (9 confirmed)
+- S129→Разрез 6, S130→Разрез 7: tentative (screenshots not 100% clear)
+
+---
+
+# MAPPING (S-point → Pit)
+Confirmed via ODT screenshots:
+```
+S124 → 01/20А → Разрез 1
+S125 → 02/20А → Разрез 2
+S126 → 03/20А → Разрез 3
+S127 → 04/20А → Разрез 4
+S128 → 05/20А → Разрез 5
+S131 → 08/20А → Разрез 8
+S132 → 09/20А → Разрез 9
+S133 → 10/20А → Разрез 10
+S134 → 11/20А → Разрез 11
+```
+Tentative:
+```
+S129 → 06/20А → Разрез 6
+S130 → 07/20А → Разрез 7
+```
+
+All 11 points included in ground_truth_v2.csv with `mapping_confidence` column.
+
+---
+
+# SATELLITE DATA (rasters)
+
+## feature_stack_30m.vrt (.tif tiles: tile1 + tile0_redo)
+- 7 bands, EPSG:4326
+- Band 1: NDMI, Band 2: MSAVI, Band 3: SI (Salinity Index), Band 4: NDWI
+- Band 5: Slope, Band 6: TWI, Band 7: VH (Sentinel-1 VH backscatter)
+- Covers approx: 58°E-62°E, 43.5°N-46.5°N
+
+## suitability_full.tif
+- V1.0 model output, 1-band float32
+- Probability of suitability (0-1 range, but S129-S134 = -1.0 indicating no-data/outside extent)
+- S124-S128: Prob ≈ 0.41-0.51 (within tile1 extent)
+- S129-S134: Prob = -1.0 (outside tile1 extent, beyond ~61.0°E)
+
+---
+
+# DECISIONS MADE
+
+## Decision 1: Strategy Selection
+**Rejected:** Strategy B (XGBoost regression on 11 points only) — guaranteed overfitting, n=11 with 7 features is impossible.
+**Rejected:** Direct jump to Strategy C (full merge → train) — need validation first.
+**Selected:** Strategy A (Golden Test: validate V1.0 Prob vs field EC → interpret) → then Strategy C (build full ground truth, train V2.0).
+
+## Decision 2: Target Variable
+**Selected:** TDS/EC (salinity) as the primary V2.0 target.
+- Column 19 in EC,TDS,pH file = "Соленость, %" (total salts as % of soil mass)
+- Convertible to TDS (mg/L) or EC (dS/m) if needed
+- Business justification: agronomists need mg/L salt content for saxaul planting decisions
+
+## Decision 3: EC Averaging
+Mean of East (col24) and North (col27) EC probe readings. South/West always NaN.
+
+## Decision 4: Top Layer Only for Lab Data
+Only the first (shallowest) depth layer of each pit is used, since satellite reflects surface.
+- Разрез 1: 0-13 cm, Разрез 2: 0-25 cm, Разрез 3: 0-3 cm, etc.
+
+## Decision 5: Decimal Conversion
+Coordinates in AralField use comma-as-decimal (Russian locale). Converted "," → "." before float parse.
+
+## Decision 6: Coordinate Format
+AralField already stores Decimal Degrees (e.g., 60.893604, 45.588539), no conversion needed.
+ODT file uses DMM (N 44°42.270), would need DD = Deg + Min/60 if used.
+
+## Decision 7: Correlation Choice
+Spearman (rank) correlation is primary metric for Golden Test — robust to outliers in small samples.
+Pearson reported as secondary.
+
+## Decision 8: Extension to V2.0
+VRT coverage extends beyond tile1; S129-S134 east of ~61.0°E are within VRT but outside the V1.0 model's training extent.
+
+---
+
+# SCRIPTS WRITTEN
+
+## scripts/validate_ground_truth.py
+Reads AralField → extracts coordinates and mean EC → samples suitability_full.tif (Prob) and feature_stack_30m.vrt (7 bands) → computes Spearman & Pearson correlations → saves golden_test_results.csv.
+
+**Key output:**
+```
+Spearman: EC vs Prob: r=0.05, p=0.88, n=11
+Spearman: EC vs SI: r=0.43, p=0.19, n=11
+Pearson: EC vs Prob: r=0.09, p=0.80, n=11
+Pearson: EC vs SI: r=0.43, p=0.19, n=11
+```
+
+**UNEXPECTED FINDING:** Prob = -1.0 for S129-S134 (6/11 points outside model extent). This drastically reduces usable points for Golden Test from 11 to 5.
+
+## scripts/build_ground_truth.py
+Merges all source data: AralField coordinates + EC, lab salinity/ph/CO2/moisture, sand/silt/clay (2020+2021), raster features → saves ground_truth_v2.csv (11 points, 27 columns).
+
+**Key output:**
+```
+Spearman: EC_field vs Salinity_pct: r=-0.37, p=0.26, n=11
+Spearman: EC_field vs SI: r=0.43, p=0.19, n=11
+Spearman: Salinity_pct vs SI: r=-0.15, p=0.67, n=11
+```
+
+---
+
+# RESULTS & UNEXPECTED FINDINGS
+
+## Finding A: V1.0 Prob has zero predictive power for EC (r=0.05, p=0.88)
+Expected — V1.0 was designed for binary suitability (SI≥P85 + slope≤5), not EC regression.
+
+## Finding B: SI vs EC correlation is moderate but non-significant (r=0.43, p=0.19)
+Promising for V2.0 — with n=11 points, a correlation of 0.43 is not statistically significant at α=0.05 but suggests a real relationship exists. With more data (especially from Strategy C full dataset), this could reach significance.
+
+## Finding C: EC_field vs Salinity_pct is NEGATIVE (r=-0.37, p=0.26)
+**THIS IS THE CRITICAL FINDING.** Field EC readings and lab salinity percentage should POSITIVELY correlate. The negative correlation suggests one of:
+1. **Mapping mismatch** — S-point → pit mapping may be incorrect (but user confirmed via screenshots)
+2. **Different measurement targets** — EC probe measures soil solution conductivity (affected by moisture, temperature, compaction); lab measures total soluble salts gravimetrically
+3. **Depth mismatch** — EC probe surface (~2-5 cm) vs lab top layer (0-13 cm, sometimes salt crust below surface)
+
+Let me show the point-by-point comparison:
+```
+Point  EC(dS/m)  Salinity(%)  Landcover
+S124   1.6       0.06         Shrubland
+S125   51.6      0.07         Bare area       ← EC=51.6 but salinity=0.07%???
+S126   23.6      0.05         Shrubland       ← EC=23.6 but salinity=0.05%???
+S127   2.9       6.52         Shrubland       ← EC=2.9 but salinity=6.52%???
+S128   2.2       31.29        Shrubland       ← EC=2.2 but salinity=31.29%???
+```
+
+Points S125, S126 have high EC but near-zero lab salinity. Points S127, S128 have low EC but very high lab salinity. If the mapping is correct, the discrepancy could mean:
+- EC probe was measuring moisture (not salt) — wet soil gives high EC even without salt
+- Lab sample was taken from a different micro-location than EC probe
+- Lab analyzed a subsurface salt layer while EC probe measured surface
+
+## Finding D: 6/11 points outside V1.0 prediction extent
+S129-S134 (east of ~61.0°E) have Prob = -1.0. This is outside the tile1 extent used by V1.0. The VRT covers the full area, so V2.0 sampling works fine — but V1.0 comparison is limited to S124-S128 only.
+
+## Finding E: 2021 мехсостав parsing yields 0 pits
+The 2021 data in мехсостав file (columns 9-16) was not parsed correctly. The code reads from col9 (pit number), col10 (sand), col12 (silt), col15 (clay) but may have column indexing off. This needs debugging but is not critical for V2.0 since 2020 data parsed fine.
+
+---
+
+# QUESTIONS FOR THE REVIEWER
+
+1. **EC-field vs Salinity_pct negative correlation**: Is the mapping actually correct? Could there be a misinterpretation of which разреза corresponds to each S-point? The user confirmed via screenshots of the cross-reference ODT, but maybe the mapping is off by 1-2 positions.
+
+2. **Are col24-27 actually EC readings or something else?** The CSV header says "Soil salinity" for cols 24-27 and "Soil electric conductivity" for cols 28-30. Both in dS/m. Could the user have misunderstood which column contains the field EC data?
+
+3. **Should I investigate col28-30 instead?** Those are labeled "Soil electric conductivity at 0-20, 20-50, 50-100 cm" but values are mostly NaN. Only a few points have data there.
+
+4. **Is the EC measurement method reliable for saline desert soils?** Portable EC probes can give erratic readings in dry, salt-crusted soils due to poor contact resistance. The bare area points (S125 bare, S134 bare) show high EC, suggesting it's moisture + salt in the wetter areas and pure salt crust in bare areas.
+
+5. **Should I check the original user's screenshots to verify mapping?** The mapping is the single point of failure for the entire V2.0 pipeline.
+
+6. **Does the ODT file's DMM coordinates match the AralField DD coordinates?** If I convert DMM→DD for the разреза, do they match the S-point locations in AralField? This would independently verify the mapping.
+
+7. **The Salt Lake Pit Issue**: Разрез 5 (S128) has salinity=31.29% in its 0-6cm layer but S128's landcover is "Shrubland" with EC_field=2.16. A pit with 31% salt should show bare salt crust, not shrubland. This strongly suggests S128 ≠ Разрез 5.
+
+8. **Should Stratregy C include extracting DMM coordinates from ODT and independently geolocating the разреза?** This would bypass the mapping entirely by using actual GPS coordinates from the cross-reference document.
+
+9. **Is the column structure of AralField correctly interpreted?** Could the EC data actually be at different column positions than I assumed?
+
+10. **Recommended next action**: Extract GPS coordinates from the ODT file (самистыру Арал.odt) using Python's odfpy or similar, convert DMM→DD, and spatially verify that each разреза's DMM coordinates fall near the corresponding S-point's coordinates. This independent verification would either confirm or refute the mapping.
+
+---
+
+# DATA FILES TO SHARE (if reviewer has access)
+
+The reviewer should examine:
+1. `F:\OPENCODE PROJECTS\aral-saxaul-ai\AralField(Sheet1).csv` — Field EC data
+2. `F:\OPENCODE PROJECTS\aral-saxaul-ai\салыстыру Арал.odt` — Cross-reference with DMM coordinates
+3. `F:\OPENCODE PROJECTS\aral-saxaul-ai\ground_truth_v2.csv` — My assembled dataset
+4. `F:\OPENCODE PROJECTS\aral-saxaul-ai\салыстыру Арал.odt` screenshots — The user shared screenshots from this ODT showing S124=1/21А=01/20А confirmation

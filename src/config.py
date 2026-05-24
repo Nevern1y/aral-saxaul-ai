@@ -29,7 +29,9 @@ class AralSaxaulConfig:
     )
 
     # ── AOI: Aral Sea bounding box  ────────────────────────────────────
-    ARAL_BBOX: Tuple[float, float, float, float] = (58.0, 43.5, 62.0, 46.5)
+    # V4.0:  58.0, 43.5, 62.0, 46.5  (missed western basin ~1°)
+    # V5.0:  57.5, 43.3, 62.0, 46.7  (full historical Aral Sea)
+    ARAL_BBOX: Tuple[float, float, float, float] = (57.5, 43.3, 62.0, 46.7)
     AOI_BUFFER_M: int = 500
     MIN_WATER_PATCH_HA: float = 100.0
     MIN_AOI_POLYGON_HA: float = 1_000.0

@@ -1,16 +1,10 @@
 import streamlit as st
 import streamlit.components.v1 as components
-
-st.set_page_config(page_title="Aral Saxaul — XAI Dashboard", layout="wide")
-
 import numpy as np
 import pandas as pd
-import joblib
 import json
-import base64
 import os
 from pathlib import Path
-import xgboost as xgb
 
 os.environ["MPLBACKEND"] = "Agg"
 import matplotlib
@@ -18,388 +12,225 @@ import matplotlib.pyplot as plt
 matplotlib.use("Agg")
 
 BASE_DIR = Path(__file__).resolve().parent
-MODEL_PATH = BASE_DIR / "outputs" / "models" / "xgb_classifier.pkl"
-SCALER_PATH = BASE_DIR / "outputs" / "models" / "scaler.pkl"
-LABELS_PATH = BASE_DIR / "outputs" / "data" / "synthetic_labels.csv"
-MAP_PATH = BASE_DIR / "outputs" / "reports" / "suitability_map_full.html"
-FI_PATH = BASE_DIR / "outputs" / "data" / "feature_importance.csv"
-SHAP_SUMMARY = BASE_DIR / "outputs" / "reports" / "shap_summary.png"
-SHAP_DEP_SI = BASE_DIR / "outputs" / "reports" / "shap_dependence_si.png"
-SHAP_DEP_MSAVI = BASE_DIR / "outputs" / "reports" / "shap_dependence_msavi.png"
+MAP_PATH = BASE_DIR / "outputs" / "reports" / "suitability_map_v4.html"
+GT_PATH = BASE_DIR / "outputs" / "data" / "ground_truth_v2.csv"
+GEOJSON_PATH = BASE_DIR / "outputs" / "data" / "optimal_zones_v4.geojson"
+AOI_VECTOR_PATH = BASE_DIR / "outputs" / "aoi" / "aral_sea_1960.geojson"
 
-FEATURE_COLUMNS = ["NDMI", "MSAVI", "SI", "Slope", "TWI", "VH", "NDWI"]
-FEATURE_LABELS = {
-    "NDMI": "NDMI (Влажность почвы)",
-    "MSAVI": "MSAVI (Растительность)",
-    "SI": "SI (Засоленность)",
-    "Slope": "Slope (Уклон, \u00b0)",
-    "TWI": "TWI (Влажность рельефа)",
-    "VH": "VH (Радар VH, dB)",
-    "NDWI": "NDWI (Водный индекс)",
-}
-FEATURE_RANGES = {
-    "NDMI": (-1.0, 1.0, 0.01),
-    "MSAVI": (-1.0, 1.0, 0.01),
-    "SI": (-1.0, 1.0, 0.01),
-    "Slope": (0.0, 45.0, 0.1),
-    "TWI": (0.0, 20.0, 0.1),
-    "VH": (-60.0, 0.0, 0.5),
-    "NDWI": (-1.0, 1.0, 0.01),
-}
+NDMI_OPTIMAL = -0.055
+NDMI_DEAD = -0.025
+NDWI_WATER = 0.0
+SLOPE_MAX = 5.0
 
+st.set_page_config(page_title="Aral Saxaul V4 — Dashboard", layout="wide")
 
-def _require(path: Path, label: str) -> None:
-    if not path.exists():
-        st.error(f"{label} не найден: {path}")
-        st.stop()
-
-
-@st.cache_resource
-def load_model():
-    _require(MODEL_PATH, "Модель")
-    model = joblib.load(MODEL_PATH)
-    try:
-        model.set_params(device="cpu", predictor="cpu_predictor")
-    except Exception:
-        pass
-    return model
-
-
-@st.cache_resource
-def load_scaler():
-    _require(SCALER_PATH, "Scaler")
-    return joblib.load(SCALER_PATH)
-
-
-@st.cache_data
-def load_test_data():
-    _require(LABELS_PATH, "Тестовый датасет")
-    return pd.read_csv(LABELS_PATH)
-
-
-@st.cache_data
-def load_feature_importance():
-    _require(FI_PATH, "Feature importance")
-    return pd.read_csv(FI_PATH)
-
-
-@st.cache_data
-def get_slider_ranges():
-    df = load_test_data()
-    ranges = {}
-    for col in FEATURE_COLUMNS:
-        mn = float(df[col].min())
-        mx = float(df[col].max())
-        step = float(FEATURE_RANGES[col][2])
-        if abs(mx - mn) < step:
-            mx = mn + step * 2
-        ranges[col] = {
-            "min": mn if mn < mx else mx - step * 4,
-            "max": mx,
-            "mean": float(df[col].mean()),
-            "step": step,
-        }
-    return ranges
-
-
-@st.cache_data
-def compute_xgb_shap_values():
-    df = load_test_data()
-    scaler = load_scaler()
-    model = load_model()
-    booster = model.get_booster()
-    X = df[FEATURE_COLUMNS].values.astype(np.float64)
-    X_scaled = scaler.transform(X)
-    n_sample = min(2000, len(X))
-    idx = np.random.default_rng(42).choice(len(X), n_sample, replace=False)
-    X_sub = X_scaled[idx]
-    dmat = xgb.DMatrix(X_sub, feature_names=FEATURE_COLUMNS)
-    contribs = booster.predict(dmat, pred_contribs=True)
-    shap_vals = contribs[:, :-1]
-    base_val = contribs[0, -1]
-    return shap_vals, X_sub, base_val
-
-
-def plot_waterfall(shap_row, base_val, data_row, feature_names):
-    n = len(shap_row)
-    idx_sorted = np.argsort(np.abs(shap_row))[::-1]
-    sorted_vals = shap_row[idx_sorted]
-    sorted_names = [feature_names[i] for i in idx_sorted]
-    sorted_data = [data_row[i] for i in idx_sorted]
-
-    cumsum = base_val + np.cumsum(sorted_vals)
-    f_x = base_val + sorted_vals.sum()
-
-    y_pos = np.arange(n)[::-1]
-    colors = ["#E74C3C" if v < 0 else "#3498DB" for v in sorted_vals]
-
-    fig, ax = plt.subplots(figsize=(8, 4.5))
-    bars = ax.barh(y_pos, sorted_vals, color=colors, height=0.6)
-
-    for i, (v, name, dv) in enumerate(zip(sorted_vals, sorted_names, sorted_data)):
-        label = f"{name} = {dv:.4f}"
-        ax.text(
-            v + (0.02 if v >= 0 else -0.02),
-            y_pos[i],
-            label,
-            va="center",
-            ha="left" if v >= 0 else "right",
-            fontsize=8,
-        )
-
-    ax.axvline(0, color="gray", linewidth=0.5)
-    ax.set_yticks(y_pos)
-    ax.set_yticklabels([""] * n)
-    ax.set_xlabel("SHAP value (log-odds contribution)")
-    ax.set_title(f"Waterfall Plot  |  f(x) = {f_x:.3f}  |  base = {base_val:.3f}")
-    ax.axvline(base_val, color="gray", linestyle="--", linewidth=0.7)
-    for spine in ["top", "right", "left"]:
-        ax.spines[spine].set_visible(False)
-
-    legend_patches = [
-        plt.Rectangle((0, 0), 1, 1, color="#3498DB", label="Повышает пригодность"),
-        plt.Rectangle((0, 0), 1, 1, color="#E74C3C", label="Снижает пригодность"),
-    ]
-    ax.legend(handles=legend_patches, loc="lower right", fontsize=8)
-    fig.tight_layout()
-    return fig
-
-
-st.title("Aral Saxaul — XAI Dashboard")
+st.title("Aral Saxaul AI — V4 с полным покрытием AOI")
 st.markdown(
-    "Интерактивный дашборд объяснимого ИИ для карты пригодности посадки саксаула "
-    "на высохшем дне Аральского моря"
+    "Дашборд карты пригодности посадки саксаула на высохшем дне Аральского моря. "
+    "V4: NDMI + AOI изоляция + топографический фильтр (уклон \u2264 5\u00b0). "
+    "AOI-маска перестроена из данных feature stack (без legacy V1.0)."
 )
 
 tab1, tab2, tab3 = st.tabs([
-    "Карта пригодности",
-    "Глобальная аналитика",
-    "Симулятор What-If",
+    "\u041a\u0430\u0440\u0442\u0430 \u043f\u0440\u0438\u0433\u043e\u0434\u043d\u043e\u0441\u0442\u0438 V4",
+    "V4 \u0410\u043d\u0430\u043b\u0438\u0442\u0438\u043a\u0430",
+    "V2.0 Ground Truth",
 ])
 
-# ── Tab 1: Map ──
+# ── Tab 1: Map ──────────────────────────────────────────────────────────
 
 with tab1:
+    v4_stats = {}
+    try:
+        if GEOJSON_PATH.exists():
+            with open(GEOJSON_PATH, "r", encoding="utf-8") as f:
+                gj = json.load(f)
+            areas_ha = [f["properties"]["area_ha"] for f in gj["features"]]
+            v4_stats["clusters"] = len(areas_ha)
+            v4_stats["area_km2"] = sum(areas_ha) / 100
+            v4_stats["area_ha"] = sum(areas_ha)
+            v4_stats["top10_km2"] = sum(sorted(areas_ha, reverse=True)[:10]) / 100
+    except Exception:
+        pass
+
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Пригодная площадь", "6 558 км\u00B2")
-    col2.metric("Доля от суши", "13.3%")
-    col3.metric("Полигонов", "597")
-    col4.metric("Площадь суши AOI", "49 296 км\u00B2")
+
+    has_vector_aoi = AOI_VECTOR_PATH.exists()
+    aoi_note = " (с контуром)" if has_vector_aoi else " (без контура)"
+
+    col1.metric(
+        "\u041e\u043f\u0442\u0438\u043c\u0430\u043b\u044c\u043d\u0430\u044f \u0437\u043e\u043d\u0430",
+        f"{v4_stats.get('area_km2', 'N/A'):,} km\u00b2" if v4_stats.get('area_km2') else "N/A (ждите...)"
+    )
+    col2.metric(
+        "\u041f\u043e\u043b\u0438\u0433\u043e\u043d\u043e\u0432 (\u22651 \u0433\u0430)",
+        f"{v4_stats.get('clusters', 'N/A'):,}" if v4_stats.get('clusters') else "N/A (ждите...)"
+    )
+    col3.metric(
+        "\u0422\u043e\u043f-\u043f\u043e\u043b\u0438\u0433\u043e\u043d\u044b (10)",
+        f"{v4_stats.get('top10_km2', 0):,.0f} km\u00b2" if v4_stats.get('top10_km2') else "N/A"
+    )
+    col4.metric("\u0412\u0435\u0440\u0441\u0438\u044f", "V4")
+
+    if not has_vector_aoi:
+        st.info(
+            "\u0414\u043b\u044f \u0442\u043e\u0447\u043d\u043e\u0439 \u0431\u0435\u0440\u0435\u0433\u043e\u0432\u043e\u0439 \u043b\u0438\u043d\u0438\u0438 "
+            "\u043f\u043e\u043c\u0435\u0441\u0442\u0438\u0442\u0435 \u0432\u0435\u043a\u0442\u043e\u0440\u043d\u044b\u0439 \u0444\u0430\u0439\u043b "
+            "\u0432 `outputs/aoi/aral_sea_1960.geojson`"
+        )
 
     if MAP_PATH.exists():
         with open(MAP_PATH, "r", encoding="utf-8") as f:
             map_html = f.read()
-        b64 = base64.b64encode(map_html.encode()).decode()
-        st.markdown(
-            f'<iframe src="data:text/html;base64,{b64}" '
-            f'width="100%" height="700" frameborder="0"></iframe>',
-            unsafe_allow_html=True,
-        )
+        components.html(map_html, height=750, scrolling=True)
     else:
         st.warning(
-            f"Файл карты не найден: {MAP_PATH}. "
-            "Запустите `python scripts/phase5_full.py` для генерации."
+            f"\u0424\u0430\u0439\u043b \u043a\u0430\u0440\u0442\u044b \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d: {MAP_PATH}. "
+            "\u0417\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u0435 `python scripts/phase5_v4_export.py`"
         )
 
-# ── Tab 2: Global Analysis ──
+# ── Tab 2: V4 Analytics ─────────────────────────────────────────────────
 
 with tab2:
-    st.subheader("Глобальная важность признаков")
-    st.markdown(
-        "Feature importance на основе Gain (прирост точности при расщеплении) – "
-        "показывает, на какие признаки модель опирается больше всего."
-    )
+    st.subheader("V4 \u0430\u0440\u0445\u0438\u0442\u0435\u043a\u0442\u0443\u0440\u0430")
 
-    fi_df = load_feature_importance()
-    fi_df_sorted = fi_df.sort_values("importance_gain", ascending=True)
+    col_rules, col_stats = st.columns([1, 1])
 
-    col_left, col_right = st.columns([1, 1.5])
-
-    with col_left:
-        st.markdown("**Важность признаков (Gain)**")
-        fig, ax = plt.subplots(figsize=(5, 3.5))
-        bars = ax.barh(fi_df_sorted["feature"], fi_df_sorted["importance_gain"], color="#2E86AB")
-        ax.set_xlabel("Gain")
-        ax.set_xlim(0, 1)
-        for bar, val in zip(bars, fi_df_sorted["importance_gain"]):
-            ax.text(val + 0.01, bar.get_y() + bar.get_height() / 2, f"{val:.0%}",
-                    va="center", fontsize=9)
-        for spine in ["top", "right"]:
-            ax.spines[spine].set_visible(False)
-        st.pyplot(fig)
-        plt.close(fig)
-
-    with col_right:
-        st.markdown("**Интерпретация**")
-        si_gain = fi_df_sorted.loc[fi_df_sorted["feature"] == "SI", "importance_gain"].values[0]
-        ndwi_gain = fi_df_sorted.loc[fi_df_sorted["feature"] == "NDWI", "importance_gain"].values[0]
+    with col_rules:
+        st.markdown("**\u041f\u0440\u0430\u0432\u0438\u043b\u0430 \u043a\u043b\u0430\u0441\u0441\u0438\u0444\u0438\u043a\u0430\u0446\u0438\u0438:**")
         st.markdown(
-            f"- **SI (Засоленность)** — **{si_gain:.0%}** — главный фактор\n"
-            f"- **NDWI (Водный индекс)** — **{ndwi_gain:.0%}** — вторичный сигнал влажности\n"
-            f"- **NDMI / MSAVI** — ~11% суммарно — вегетация и влажность почвы\n"
-            f"- **Slope / TWI / VH** — <2% — рельеф и радар почти не влияют\n\n"
-            "Модель подтверждает, что засоление — ключевой лимитирующий фактор "
-            "для приживаемости саксаула на высохшем дне Арала."
+            """
+            | \u041a\u043b\u0430\u0441\u0441 | \u041f\u0440\u0430\u0432\u0438\u043b\u043e |
+            |---|---|
+            | **1 Optimal** | NDMI < -0.055 **\u0438** Slope \u2264 5\u00b0 |
+            | **2 Risk** | -0.055 \u2264 NDMI \u2264 -0.025 **\u0438** Slope \u2264 5\u00b0 |
+            | **3 Dead** | NDMI > -0.025 (\u043a\u0430\u043f\u0438\u043b\u043b\u044f\u0440\u043d\u044b\u0439 \u043f\u043e\u0434\u044a\u0451\u043c) |
+            | **4 Topo Obstacle** | Slope > 5\u00b0 (\u043a\u0440\u0443\u0442\u044b\u0435 \u0441\u043a\u043b\u043e\u043d\u044b) |
+            | **0 Water/NoData** | NDWI > 0 \u0438\u043b\u0438 \u043d\u0435\u0442 \u0434\u0430\u043d\u043d\u044b\u0445 |
+
+            **\u041a\u043b\u044e\u0447\u0435\u0432\u043e\u0435 \u043e\u0442\u043a\u0440\u044b\u0442\u0438\u0435:**
+            SI \u043e\u0442\u0431\u0440\u0430\u043a\u043e\u0432\u0430\u043d — Spearman
+            r(Salinity vs SI) = +0.41 (p=0.21).
+            NDMI: **r = +0.69** (p=0.02).
+            """
+        )
+
+    with col_stats:
+        st.markdown("**AOI-\u043c\u0430\u0441\u043a\u0430:**")
+        st.markdown(
+            "\u041d\u043e\u0432\u0430\u044f \u043c\u0430\u0441\u043a\u0430 `aoi_mask_v5.tif` "
+            "\u043f\u043e\u0441\u0442\u0440\u043e\u0435\u043d\u0430 \u0438\u0437 \u0432\u0430\u043b\u0438\u0434\u043d\u044b\u0445 "
+            "\u0434\u0430\u043d\u043d\u044b\u0445 feature stack (NDMI \u043d\u0435 NaN) + "
+            "\u0432\u043e\u0434\u043d\u0430\u044f \u043c\u0430\u0441\u043a\u0430 NDWI. "
+            "Legacy \u043c\u0430\u0441\u043a\u0430 `suitability_full.tif` (V1.0) \u0431\u043e\u043b\u044c\u0448\u0435 "
+            "\u043d\u0435 \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0435\u0442\u0441\u044f."
+        )
+
+        st.markdown("**\u0420\u0430\u0441\u043f\u0440\u0435\u0434\u0435\u043b\u0435\u043d\u0438\u0435 V4:**")
+        stats_data = {
+            "Class": ["1 Optimal", "2 Risk", "3 Dead", "4 Topo", "0 Water"],
+            "px": ["100.6M", "28.8M", "24.7M", "557K", "11.5M"],
+            "%": ["65.0%", "18.6%", "16.0%", "0.4%", "—"],
+        }
+        st.dataframe(pd.DataFrame(stats_data), hide_index=True)
+
+        st.markdown("**\u041e\u0433\u0440\u0430\u043d\u0438\u0447\u0435\u043d\u0438\u0435:**")
+        st.markdown(
+            "\u0411\u0435\u0437 \u0432\u0435\u043a\u0442\u043e\u0440\u043d\u043e\u0439 "
+            "\u0431\u0435\u0440\u0435\u0433\u043e\u0432\u043e\u0439 \u043b\u0438\u043d\u0438\u0438 "
+            "\u0432\u0441\u0435 139K km\u00b2 \u043f\u043e\u043f\u0430\u0434\u0430\u044e\u0442 \u0432 AOI, "
+            "\u0432\u043a\u043b\u044e\u0447\u0430\u044f \u043f\u0443\u0441\u0442\u044b\u043d\u0438 "
+            "\u0432\u043d\u0435 \u0410\u0440\u0430\u043b\u0430. "
+            "\u041f\u043e\u043c\u0435\u0441\u0442\u0438\u0442\u0435 `aral_sea_1960.geojson` "
+            "\u0432 `outputs/aoi/` \u0434\u043b\u044f \u0442\u043e\u0447\u043d\u043e\u0433\u043e "
+            "\u043a\u043b\u0438\u043f\u043f\u0438\u043d\u0433\u0430."
         )
 
     st.markdown("---")
-    st.subheader("SHAP-анализ (предвычисленные графики)")
+    st.subheader("\u0421\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u0435 \u0432\u0435\u0440\u0441\u0438\u0439")
 
-    col_dep1, col_dep2 = st.columns(2)
+    comp_data = {
+        "\u0412\u0435\u0440\u0441\u0438\u044f": ["V1.0", "V2.0", "V3.0", "V3.2", "V4", "**V4 + Coast**"],
+        "AOI": ["BBOX", "BBOX", "BBOX", "V1.0 mask", "data valid", "**вектор**"],
+        "Optimal": ["6,558 km\u00b2", "\u2014", "75,165 km\u00b2", "14,962 km\u00b2", "~90K km\u00b2*", "**TBD**"],
+        "Статус": ["Archive", "Frozen", "Archive", "Archive", "Betat", "**Goal**"],
+    }
+    st.dataframe(pd.DataFrame(comp_data), hide_index=True, use_container_width=True)
+    st.caption("* 90K km\u00b2 включает пустыни вне исторического Арала. "
+               "Финальная цифра будет после клиппинга по береговой линии 1960 года.")
 
-    with col_dep1:
-        st.markdown("**SHAP Summary — влияние всех признаков**")
-        if SHAP_SUMMARY.exists():
-            st.image(str(SHAP_SUMMARY), width='stretch')
-        else:
-            st.warning("Файл shap_summary.png не найден в outputs/reports/")
-        st.caption(
-            "Каждая точка — одно наблюдение. Цвет — значение признака "
-            "(красный = высокое, синий = низкое). "
-            "Положительный SHAP = повышает вероятность пригодности."
-        )
-
-    with col_dep2:
-        st.markdown("**SI (Засоленность) — зависимость SHAP**")
-        if SHAP_DEP_SI.exists():
-            st.image(str(SHAP_DEP_SI), width='stretch')
-        else:
-            st.warning("Файл shap_dependence_si.png не найден")
-        st.caption(
-            "По оси X — значение SI, по оси Y — SHAP value. "
-            "Показывает, при каких значениях SI засоление становится "
-            "критическим фактором."
-        )
-
-    col3_1, col3_2 = st.columns(2)
-
-    with col3_1:
-        st.markdown("**MSAVI — зависимость**")
-        if SHAP_DEP_MSAVI.exists():
-            st.image(str(SHAP_DEP_MSAVI), width='stretch')
-        else:
-            st.warning("Файл shap_dependence_msavi.png не найден")
-
-    with col3_2:
-        st.info(
-            "**Физика модели:** SI — главный признак (62% важности). "
-            "Графики SHAP показывают направление влияния. "
-            "NDWI и NDMI работают как вторичные сигналы влажности. "
-            "Slope, TWI и VH имеют минимальный вклад."
-        )
-
-# ── Tab 3: What-If Simulator ──
+# ── Tab 3: Ground Truth ─────────────────────────────────────────────────
 
 with tab3:
-    st.subheader("Интерактивный симулятор пригодности")
-    st.markdown(
-        "Меняйте ползунки и наблюдайте, как меняется предсказание "
-        "и какой вклад вносит каждый признак."
-    )
+    st.subheader("V2.0 Ground Truth \u2014 11 \u0442\u043e\u0447\u0435\u043a")
 
     try:
-        ranges = get_slider_ranges()
-        model = load_model()
-        scaler = load_scaler()
-    except Exception as e:
-        st.error(f"Ошибка загрузки модели: {e}")
-        st.stop()
+        df = pd.read_csv(GT_PATH)
+        df["pit_code"] = df["pit_code"].str.replace("\u0410", "A")
 
-    col_sliders, col_result = st.columns([1, 1.5])
+        cols = ["pit_code", "S_Point", "Lon_DD", "Lat_DD", "Salinity_pct",
+                "SI", "NDMI", "NDWI", "Cl", "SO4", "Na", "Sand_pct", "Silt_pct"]
+        available = [c for c in cols if c in df.columns]
+        st.dataframe(df[available], hide_index=True, use_container_width=True)
 
-    with col_sliders:
-        sliders = {}
-        sliders["NDMI"] = st.slider(
-            FEATURE_LABELS["NDMI"],
-            min_value=ranges["NDMI"]["min"],
-            max_value=ranges["NDMI"]["max"],
-            value=ranges["NDMI"]["mean"],
-            step=ranges["NDMI"]["step"],
-        )
-        sliders["MSAVI"] = st.slider(
-            FEATURE_LABELS["MSAVI"],
-            min_value=ranges["MSAVI"]["min"],
-            max_value=ranges["MSAVI"]["max"],
-            value=ranges["MSAVI"]["mean"],
-            step=ranges["MSAVI"]["step"],
-        )
-        sliders["SI"] = st.slider(
-            FEATURE_LABELS["SI"],
-            min_value=ranges["SI"]["min"],
-            max_value=ranges["SI"]["max"],
-            value=ranges["SI"]["mean"],
-            step=ranges["SI"]["step"],
-        )
-        sliders["Slope"] = st.slider(
-            FEATURE_LABELS["Slope"],
-            min_value=ranges["Slope"]["min"],
-            max_value=ranges["Slope"]["max"],
-            value=ranges["Slope"]["mean"],
-            step=ranges["Slope"]["step"],
-        )
-        sliders["TWI"] = st.slider(
-            FEATURE_LABELS["TWI"],
-            min_value=ranges["TWI"]["min"],
-            max_value=ranges["TWI"]["max"],
-            value=ranges["TWI"]["mean"],
-            step=ranges["TWI"]["step"],
-        )
-        sliders["VH"] = st.slider(
-            FEATURE_LABELS["VH"],
-            min_value=ranges["VH"]["min"],
-            max_value=ranges["VH"]["max"],
-            value=ranges["VH"]["mean"],
-            step=ranges["VH"]["step"],
-        )
-        sliders["NDWI"] = st.slider(
-            FEATURE_LABELS["NDWI"],
-            min_value=ranges["NDWI"]["min"],
-            max_value=ranges["NDWI"]["max"],
-            value=ranges["NDWI"]["mean"],
-            step=ranges["NDWI"]["step"],
+        st.markdown("### \u0418\u0441\u0442\u043e\u0447\u043d\u0438\u043a \u043a\u043e\u043e\u0440\u0434\u0438\u043d\u0430\u0442")
+        st.markdown(
+            "\u2013 **01/20\u0410\u201307/20\u0410:** ODT DMM (\u0441\u043a\u0440\u0438\u043d\u0448\u043e\u0442\u044b "
+            "cross-reference \u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u0430)\n"
+            "\u2013 **08/20\u0410\u201311/20\u0410:** AralField DD \u0441\u043a\u043e\u0440\u0440\u0435\u043a\u0442\u0438\u0440\u043e\u0432\u0430\u043d\u044b "
+            "\u043d\u0430 mean offset vector (dLon=1.124\u00b0, dLat=0.895\u00b0)"
         )
 
-    with col_result:
-        sample = np.array([[sliders[c] for c in FEATURE_COLUMNS]], dtype=np.float64)
-        sample_scaled = scaler.transform(sample)
+        st.markdown("### Spearman \u043a\u043e\u0440\u0440\u0435\u043b\u044f\u0446\u0438\u0438")
+        from scipy.stats import spearmanr
+        r_si, p_si = spearmanr(df["Salinity_pct"], df["SI"])
+        r_ndmi, p_ndmi = spearmanr(df["Salinity_pct"], df["NDMI"])
+        corr_data = {
+            "\u041f\u0430\u0440\u0430": ["Salinity vs SI", "Salinity vs NDMI"],
+            "Spearman r": [f"{r_si:.4f}", f"{r_ndmi:.4f}"],
+            "p-value": [f"{p_si:.4f}", f"{p_ndmi:.4f}"],
+            "\u0412\u0435\u0440\u0434\u0438\u043a\u0442": ["\u0421\u043b\u0430\u0431\u0430\u044f (p>0.05)", "**\u0421\u0438\u043b\u044c\u043d\u0430\u044f (p<0.05)**"],
+        }
+        st.dataframe(pd.DataFrame(corr_data), hide_index=True)
 
-        prob = float(model.predict_proba(sample_scaled)[0, 1])
-        pred_class = "Пригодно" if prob >= 0.5 else "Непригодно"
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
 
-        st.metric("Вероятность пригодности", f"{prob:.1%}")
-        st.markdown(f"**Решение модели:** {pred_class}")
+        ax1.scatter(df["SI"], df["Salinity_pct"], c="#3498DB", s=80, alpha=0.7)
+        ax1.set_xlabel("SI (Salinity Index)")
+        ax1.set_ylabel("Salinity_pct (%)")
+        ax1.set_title(f"SI vs Salinity (r={r_si:.2f}, p={p_si:.3f})")
+        ax1.axhline(y=2.0, color="green", linestyle="--", alpha=0.5, label="<2% Optimal")
+        ax1.axhline(y=5.0, color="red", linestyle="--", alpha=0.5, label=">5% Dead")
+        for _, row in df.iterrows():
+            ax1.annotate(row["S_Point"], (row["SI"], row["Salinity_pct"]),
+                        fontsize=7, alpha=0.7)
+        ax1.legend(fontsize=8)
+        ax1.grid(True, alpha=0.3)
 
-        proba_display = pd.DataFrame(
-            {"Класс": ["Непригодно", "Пригодно"], "Вероятность": [f"{1-prob:.1%}", f"{prob:.1%}"]}
-        )
-        st.dataframe(proba_display, hide_index=True)
+        ax2.scatter(df["NDMI"], df["Salinity_pct"], c="#2ECC40", s=80, alpha=0.7)
+        ax2.set_xlabel("NDMI (Normalized Difference Moisture Index)")
+        ax2.set_ylabel("Salinity_pct (%)")
+        ax2.set_title(f"NDMI vs Salinity (r={r_ndmi:.2f}, p={p_ndmi:.3f})")
+        ax2.axhline(y=2.0, color="green", linestyle="--", alpha=0.5, label="<2% Optimal")
+        ax2.axhline(y=5.0, color="red", linestyle="--", alpha=0.5, label=">5% Dead")
+        ax2.axvline(x=-0.055, color="blue", linestyle=":", alpha=0.5, label="NDMI Optimal threshold")
+        ax2.axvline(x=-0.025, color="red", linestyle=":", alpha=0.5, label="NDMI Dead threshold")
+        for _, row in df.iterrows():
+            ax2.annotate(row["S_Point"], (row["NDMI"], row["Salinity_pct"]),
+                        fontsize=7, alpha=0.7)
+        ax2.legend(fontsize=8)
+        ax2.grid(True, alpha=0.3)
 
-        st.markdown("---")
-        st.markdown("**Вклад признаков (SHAP Waterfall)**")
-
-        booster = model.get_booster()
-        dmat = xgb.DMatrix(sample_scaled, feature_names=FEATURE_COLUMNS)
-        contribs = booster.predict(dmat, pred_contribs=True)
-        shap_row = contribs[0, :-1]
-        base_val = float(contribs[0, -1])
-
-        nan_mask = np.isnan(shap_row)
-        if nan_mask.any():
-            shap_row = shap_row.copy()
-            shap_row[nan_mask] = 0.0
-            st.caption(
-                "Примечание: VH имеет нулевую дисперсию в обучающих данных. "
-                "Его вклад в предсказание равен нулю."
-            )
-
-        fig = plot_waterfall(shap_row, base_val, sample[0], FEATURE_COLUMNS)
+        fig.tight_layout()
         st.pyplot(fig)
         plt.close(fig)
 
-        st.markdown("**Как читать:**")
-        st.markdown(
-            "- Синие полосы = признак **повышает** вероятность пригодности\n"
-            "- Красные полосы = признак **снижает** вероятность пригодности\n"
-            "- Длина полосы = сила влияния (в log-odds)\n"
-            "- **f(x)** = итоговый log-odds модели → конвертируется в вероятность"
+        st.caption(
+            "SI \u043d\u0435 \u0440\u0430\u0437\u0434\u0435\u043b\u044f\u0435\u0442 \u0437\u043e\u043d\u044b. "
+            "NDMI: \u0447\u0435\u043c \u0432\u043b\u0430\u0436\u043d\u0435\u0435, \u0442\u0435\u043c \u0441\u043e\u043b\u043e\u043d\u0435\u0435 "
+            "(\u043a\u0430\u043f\u0438\u043b\u043b\u044f\u0440\u043d\u044b\u0439 \u043f\u043e\u0434\u044a\u0451\u043c)."
         )
+
+    except Exception as e:
+        st.warning(f"Ground truth \u043d\u0435 \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043d: {e}")
+        st.info("\u0417\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u0435 `python scripts/build_ground_truth.py`")
