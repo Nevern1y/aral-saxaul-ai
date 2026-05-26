@@ -8,8 +8,7 @@ from folium import plugins
 from shapely.geometry import box, shape
 from pathlib import Path
 import plotly.express as px
-import base64
-import tempfile
+import html
 try:
     import rasterio
 except ModuleNotFoundError:
@@ -57,6 +56,15 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+
+def _render_map(html_str, height=700):
+    """Embed a full HTML page (Folium map) via srcdoc iframe so JS executes."""
+    safe = html_str.replace("&", "&amp;").replace('"', "&quot;")
+    st.markdown(
+        f'<iframe srcdoc="{safe}" width="100%" height="{height}" style="border:none;"></iframe>',
+        unsafe_allow_html=True,
+    )
 
 
 @st.cache_data
@@ -326,8 +334,7 @@ with tab_logistics:
         plugins.Fullscreen().add_to(m)
         plugins.MousePosition().add_to(m)
 
-        b64 = base64.b64encode(m.get_root().render().encode("utf-8")).decode("ascii")
-        st.iframe(f"data:text/html;base64,{b64}", width="stretch", height=700)
+        _render_map(m.get_root().render())
 
         with st.expander("\U0001f4c2 Список маршрутных файлов (KML)"):
             display_df = filtered[
@@ -381,8 +388,7 @@ with tab_analytics:
     # ── Карта на самом видном месте ─────────────────────────────────
     st.markdown("### 🗺️ Карта пригодных участков")
     if V5_MAP_PATH.exists():
-        b64 = base64.b64encode(V5_MAP_PATH.read_bytes()).decode("ascii")
-        st.iframe(f"data:text/html;base64,{b64}", width="stretch", height=700)
+        _render_map(V5_MAP_PATH.read_text(encoding="utf-8"))
         st.caption("🟢 V5.0 карта пригодности (разрешение 10 м)")
         if V5_OPERATIONAL_PATH.exists():
             gj_size_mb = V5_OPERATIONAL_PATH.stat().st_size / (1024 * 1024)
