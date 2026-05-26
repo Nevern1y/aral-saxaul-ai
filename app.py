@@ -1,5 +1,4 @@
 import streamlit as st
-import streamlit.components.v1 as components
 import numpy as np
 import pandas as pd
 import json
@@ -9,7 +8,10 @@ from folium import plugins
 from shapely.geometry import box, shape
 from pathlib import Path
 import plotly.express as px
-import rasterio
+try:
+    import rasterio
+except ModuleNotFoundError:
+    rasterio = None
 
 os.environ["MPLBACKEND"] = "Agg"
 import matplotlib
@@ -84,7 +86,7 @@ def load_v5_class_pixels():
     pixels = {}
     total_px = 0
     path = BASE_DIR / "outputs" / "data" / "suitability_map_v5_filtered.tif"
-    if path.exists():
+    if path.exists() and rasterio is not None:
         with rasterio.open(path) as src:
             arr = src.read(1)
         total_px = arr.size
@@ -330,7 +332,7 @@ with tab_logistics:
         plugins.Fullscreen().add_to(m)
         plugins.MousePosition().add_to(m)
 
-        components.html(m.get_root().render(), height=700)
+        st.html(m.get_root().render(), height=700)
 
         with st.expander("\U0001f4c2 Список маршрутных файлов (KML)"):
             display_df = filtered[
@@ -385,7 +387,7 @@ with tab_analytics:
     st.markdown("### 🗺️ Карта пригодных участков")
     map_html = load_map_html_str()
     if map_html:
-        components.html(map_html, height=600)
+        st.html(map_html, height=600)
         st.caption("🟢 V5.0 карта пригодности (разрешение 10 м)")
         if V5_OPERATIONAL_PATH.exists():
             gj_size_mb = V5_OPERATIONAL_PATH.stat().st_size / (1024 * 1024)
@@ -454,7 +456,7 @@ with tab_analytics:
             pixels_json = json.dumps({str(k): v for k, v in v5_class_pixels.items()})
             fig_audit = make_audit_fig(pixels_json, total_px)
             if fig_audit is not None:
-                st.plotly_chart(fig_audit, use_container_width=True)
+                st.plotly_chart(fig_audit, width='stretch')
         else:
             st.info("Растровые данные классификации не найдены.")
 
