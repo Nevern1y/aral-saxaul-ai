@@ -332,7 +332,7 @@ with tab_logistics:
         plugins.Fullscreen().add_to(m)
         plugins.MousePosition().add_to(m)
 
-        st.html(m.get_root().render(), height=700)
+        st.html(m.get_root().render())
 
         with st.expander("\U0001f4c2 Список маршрутных файлов (KML)"):
             display_df = filtered[
@@ -387,7 +387,7 @@ with tab_analytics:
     st.markdown("### 🗺️ Карта пригодных участков")
     map_html = load_map_html_str()
     if map_html:
-        st.html(map_html, height=600)
+        st.html(map_html)
         st.caption("🟢 V5.0 карта пригодности (разрешение 10 м)")
         if V5_OPERATIONAL_PATH.exists():
             gj_size_mb = V5_OPERATIONAL_PATH.stat().st_size / (1024 * 1024)
