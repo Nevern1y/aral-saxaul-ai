@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import numpy as np
 import pandas as pd
 import json
@@ -59,12 +60,8 @@ st.markdown(
 
 
 def _render_map(html_str, height=700):
-    """Embed a full HTML page (Folium map) via srcdoc iframe so JS executes."""
-    safe = html_str.replace("&", "&amp;").replace('"', "&quot;")
-    st.markdown(
-        f'<iframe srcdoc="{safe}" width="100%" height="{height}" style="border:none;"></iframe>',
-        unsafe_allow_html=True,
-    )
+    """Embed a full HTML page (Folium map) via components.html to avoid CSP issues."""
+    components.html(html_str, height=height, scrolling=False)
 
 
 @st.cache_data
@@ -170,22 +167,6 @@ st.markdown(
     "Система автоматического планирования безопасных зон посадки саксаула "
     "на высохшем дне Аральского моря."
     "</p>",
-    unsafe_allow_html=True,
-)
-
-st.markdown(
-    """
-    <style>
-    .block-container {
-        max-width: 1300px;
-        padding-top: 2rem;
-        padding-bottom: 2rem;
-    }
-    [data-testid="stMetricValue"] {
-        font-size: 1.8rem;
-    }
-    </style>
-    """,
     unsafe_allow_html=True,
 )
 
