@@ -8,6 +8,7 @@ from folium import plugins
 from shapely.geometry import box, shape
 from pathlib import Path
 import plotly.express as px
+import tempfile
 try:
     import rasterio
 except ModuleNotFoundError:
@@ -102,14 +103,6 @@ def load_v5_thresholds():
         with open(path, "r") as f:
             return json.load(f)
     return {}
-
-
-@st.cache_data
-def load_map_html_str():
-    if V5_MAP_PATH.exists():
-        with open(V5_MAP_PATH, "r", encoding="utf-8") as f:
-            return f.read()
-    return None
 
 
 @st.cache_data
@@ -332,7 +325,11 @@ with tab_logistics:
         plugins.Fullscreen().add_to(m)
         plugins.MousePosition().add_to(m)
 
-        st.html(m.get_root().render())
+        tmp = tempfile.NamedTemporaryFile(suffix=".html", delete=False, mode="w", encoding="utf-8")
+        tmp_path = tmp.name
+        tmp.close()
+        m.save(tmp_path)
+        st.iframe(tmp_path, width="stretch", height=700)
 
         with st.expander("\U0001f4c2 Список маршрутных файлов (KML)"):
             display_df = filtered[
@@ -385,9 +382,8 @@ with tab_analytics:
 
     # ── Карта на самом видном месте ─────────────────────────────────
     st.markdown("### 🗺️ Карта пригодных участков")
-    map_html = load_map_html_str()
-    if map_html:
-        st.html(map_html)
+    if V5_MAP_PATH.exists():
+        st.iframe(str(V5_MAP_PATH), width="stretch", height=700)
         st.caption("🟢 V5.0 карта пригодности (разрешение 10 м)")
         if V5_OPERATIONAL_PATH.exists():
             gj_size_mb = V5_OPERATIONAL_PATH.stat().st_size / (1024 * 1024)
