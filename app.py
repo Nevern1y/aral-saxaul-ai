@@ -9,6 +9,7 @@ from folium import plugins
 from shapely.geometry import box, shape
 from pathlib import Path
 import plotly.express as px
+import rasterio
 
 os.environ["MPLBACKEND"] = "Agg"
 import matplotlib
@@ -16,12 +17,10 @@ import matplotlib.pyplot as plt
 matplotlib.use("Agg")
 
 BASE_DIR = Path(__file__).resolve().parent
-MAP_PATH = BASE_DIR / "outputs" / "reports" / "suitability_map_v4.html"
 GT_PATH = BASE_DIR / "outputs" / "data" / "ground_truth_v2.csv"
-GEOJSON_PATH = BASE_DIR / "outputs" / "data" / "optimal_zones_v4.geojson"
 AOI_VECTOR_PATH = BASE_DIR / "outputs" / "aoi" / "aral_sea_1960.geojson"
 
-TASKS_PATH = BASE_DIR / "outputs" / "logistics" / "tasks_index_enriched.csv"
+TASKS_PATH = BASE_DIR / "outputs" / "logistics" / "tasks_index_v5_enriched.csv"
 ROADS_PATH = BASE_DIR / "outputs" / "logistics" / "aralkum_roads.geojson"
 GRID_STEP = 0.1
 
@@ -29,6 +28,12 @@ NDMI_OPTIMAL = -0.055
 NDMI_DEAD = -0.025
 NDWI_WATER = 0.0
 SLOPE_MAX = 5.0
+
+# ── V5.0 paths (strict — no V4 fallback) ──────────────────────────────
+V5_MAP_PATH = BASE_DIR / "outputs" / "reports" / "suitability_map_v5.html"
+V5_OPERATIONAL_PATH = BASE_DIR / "outputs" / "data" / "operational_zones_v5.geojson"
+V5_THRESHOLDS_PATH = BASE_DIR / "outputs" / "data" / "thresholds_v5.json"
+V5_STATS_PATH = BASE_DIR / "outputs" / "data" / "v5_stats.json"
 
 st.set_page_config(page_title="Aral Saxaul: Платформа Фитомелиорации", layout="wide")
 
@@ -62,6 +67,97 @@ def load_roads():
     if ROADS_PATH.exists():
         return gpd.read_file(ROADS_PATH)
     return None
+
+
+# ── Cached V5 data loaders (heavy I/O → once per session) ──────────────
+@st.cache_data
+def load_v5_stats():
+    path = BASE_DIR / "outputs" / "data" / "v5_stats.json"
+    if path.exists():
+        with open(path, "r") as f:
+            return json.load(f)
+    return {}
+
+
+@st.cache_data
+def load_v5_class_pixels():
+    pixels = {}
+    total_px = 0
+    path = BASE_DIR / "outputs" / "data" / "suitability_map_v5_filtered.tif"
+    if path.exists():
+        with rasterio.open(path) as src:
+            arr = src.read(1)
+        total_px = arr.size
+        for cls_val in [0, 1, 3, 4, 5, 10]:
+            pixels[cls_val] = int((arr == cls_val).sum())
+    return pixels, total_px
+
+
+@st.cache_data
+def load_v5_thresholds():
+    path = BASE_DIR / "outputs" / "data" / "thresholds_v5.json"
+    if path.exists():
+        with open(path, "r") as f:
+            return json.load(f)
+    return {}
+
+
+@st.cache_data
+def load_map_html_str():
+    if V5_MAP_PATH.exists():
+        with open(V5_MAP_PATH, "r", encoding="utf-8") as f:
+            return f.read()
+    return None
+
+
+@st.cache_data
+def make_audit_fig(pixels_json_str, total_px_int):
+    pixels = json.loads(pixels_json_str)
+    if not pixels or total_px_int == 0:
+        return None
+    water_pct = pixels.get("0", 0) / total_px_int * 100
+    opt_pct = pixels.get("1", 0) / total_px_int * 100
+    salt_pct = pixels.get("3", 0) / total_px_int * 100
+    brine_pct = pixels.get("4", 0) / total_px_int * 100
+    obst_pct = pixels.get("5", 0) / total_px_int * 100
+    veg_pct = pixels.get("10", 0) / total_px_int * 100
+
+    audit_data = pd.DataFrame({
+        "Зона": [
+            "Optimal (Оптимально для посадки)",
+            "Vegetation (Естественная вегетация)",
+            "Dead / Wet Toxic (Капиллярный подъем рапы)",
+            "Risk / Dry Salt (Сухая солевая корка)",
+            "Obstacle / Topo (Крутые склоны и обрывы)",
+            "Water / NoData (Акватория / Нет данных)",
+        ],
+        "Доля (%)": [
+            round(opt_pct, 1), round(veg_pct, 1),
+            round(brine_pct, 1), round(salt_pct, 1),
+            round(obst_pct, 1), round(water_pct, 1),
+        ],
+    })
+
+    audit_colors = {
+        "Optimal (Оптимально для посадки)": "#2ecc40",
+        "Vegetation (Естественная вегетация)": "#7FCDBB",
+        "Dead / Wet Toxic (Капиллярный подъем рапы)": "#D95F02",
+        "Risk / Dry Salt (Сухая солевая корка)": "#E6AB02",
+        "Obstacle / Topo (Крутые склоны и обрывы)": "#636363",
+        "Water / NoData (Акватория / Нет данных)": "#BDBDBD",
+    }
+
+    fig = px.pie(
+        audit_data,
+        values="Доля (%)",
+        names="Зона",
+        color="Зона",
+        color_discrete_map=audit_colors,
+        hole=0.4,
+    )
+    fig.update_traces(textinfo="label+percent", textposition="outside", textfont_size=10)
+    fig.update_layout(showlegend=False, height=400, margin=dict(l=20, r=20, t=10, b=20))
+    return fig
 
 
 st.title("Aral Saxaul: Система планирования посадок")
@@ -100,49 +196,70 @@ tab_logistics, tab_analytics, tab_dev = st.tabs([
 # ══════════════════════════════════════════════════════════════════════
 
 with tab_logistics:
-    tasks_df = load_tasks()
-    roads_gdf = load_roads()
+    try:
+        tasks_df = load_tasks()
+        roads_gdf = load_roads()
+        v5_stats = load_v5_stats()
+    except FileNotFoundError:
+        st.error("\u26a0\ufe0f \u041b\u043e\u0433\u0438\u0441\u0442\u0438\u0447\u0435\u0441\u043a\u0438\u0435 \u0434\u0430\u043d\u043d\u044b\u0435 V5.0 \u043d\u0435 \u043e\u0431\u043d\u0430\u0440\u0443\u0436\u0435\u043d\u044b.")
+        st.info(
+            "\u041f\u043e\u0436\u0430\u043b\u0443\u0439\u0441\u0442\u0430, \u0437\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u0435 \u0431\u0430\u0437\u043e\u0432\u044b\u0439 \u0441\u043a\u0440\u0438\u043f\u0442 \u0433\u0435\u043d\u0435\u0440\u0430\u0446\u0438\u0438 \u0441\u0435\u0442\u043a\u0438 \u043d\u0430\u0440\u044f\u0434\u043e\u0432 \u0438 \u0440\u0430\u0441\u0447\u0435\u0442\u0430 \u0434\u043e\u0440\u043e\u0433:\n"
+            "`python scripts/v5_logistics_prep.py`"
+        )
+        st.stop()
 
     if tasks_df.empty:
         st.warning(
             f"Файл не найден: {TASKS_PATH}. "
-            "Запустите `python scripts/phase7_infrastructure.py`"
+            "Запустите `python scripts/v5_logistics_prep.py`"
         )
     else:
         max_dist = float(tasks_df["distance_to_road_km"].max())
+        max_cell_ha = float(tasks_df["area_ha"].max())
 
         col_f1, col_f2 = st.columns(2)
         with col_f1:
-            dist_thresh = st.slider(
-                "Максимальное удаление от грунтовых дорог (км)",
-                min_value=0.0,
-                max_value=min(max_dist, 100.0),
-                value=5.0,
-                step=0.5,
-                help="Фильтрует участки по их транспортной доступности. Оставляет на карте только те зоны, которые расположены не дальше указанного расстояния от существующих грунтовых дорог, что позволяет оптимизировать логистику и затраты на топливо.",
+            road_scenarios = {
+                "\U0001f680 Прибрежная зона (До 120 км — высокая доступность)": 120.0,
+                "\U0001f42b Глубокий Аралкум (До 250 км — автономная экспедиция)": 250.0,
+                "\U0001f30d Максимальный охват (Вся доступная территория)": float(tasks_df["distance_to_road_km"].max()),
+            }
+            selected_road_scen = st.selectbox(
+                "\U0001f4cd Транспортная доступность участков:",
+                options=list(road_scenarios.keys()),
+                index=2,
             )
+            dist_thresh = road_scenarios[selected_road_scen]
+
         with col_f2:
-            min_area = st.slider(
-                "Минимальная площадь посадочного кластера (га)",
-                min_value=0,
-                max_value=10000,
-                value=1000,
-                step=100,
-                help="Исключает из плана мелкие, разрозненные участки. Позволяет сосредоточить работу лесопосадочной техники только на крупных сплошных массивах, минимизируя холостые переезды тракторов между точками.",
+            area_scenarios = {
+                "\U0001f331 Локальные питомники (От 10 до 1 000 га)": (10, 1000),
+                "\U0001f333 Крупные лесничества (От 1 000 до 5 000 га)": (1000, 5000),
+                "\U0001f985 Стратегические хабы (Более 5 000 га)": (5000, int(max_cell_ha)),
+                "\U0001f4ca Все размеры кластеров": (0, int(max_cell_ha)),
+            }
+            selected_area_scen = st.selectbox(
+                "\U0001f4d0 Масштаб планируемого кластера:",
+                options=list(area_scenarios.keys()),
+                index=3,
             )
+            min_area, max_area = area_scenarios[selected_area_scen]
 
         filtered = tasks_df[
             (tasks_df["distance_to_road_km"] <= dist_thresh)
             & (tasks_df["area_ha"] >= min_area)
+            & (tasks_df["area_ha"] <= max_area)
         ]
 
         col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+        total_ha = v5_stats.get("area_ha", 0)
         col_m1.metric(
-            "Доступно гектаров",
-            f"{filtered['area_ha'].sum():,.0f}" if not filtered.empty else "0",
+            "Доступно гектаров (V5.0)",
+            f"{total_ha:,.0f}",
+            delta=f"{filtered['area_ha'].sum():,.0f} отфильтровано" if not filtered.empty else None,
         )
         col_m2.metric("Количество участков", f"{len(filtered):,}")
-        col_m3.metric("Из общего числа участков", f"{len(tasks_df):,}")
+        col_m3.metric("Из общего числа ячеек", f"{len(tasks_df):,}")
         col_m4.metric(
             "Доля от всех",
             f"{len(filtered) / len(tasks_df) * 100:.1f}%" if not filtered.empty else "0%",
@@ -234,116 +351,112 @@ with tab_logistics:
 # ══════════════════════════════════════════════════════════════════════
 
 with tab_analytics:
-    v4_stats = {}
+    # ── All heavy I/O goes through @st.cache_data (runs once) ────────────
     try:
-        if GEOJSON_PATH.exists():
-            with open(GEOJSON_PATH, "r", encoding="utf-8") as f:
-                gj = json.load(f)
-            areas_ha = [f["properties"]["area_ha"] for f in gj["features"]]
-            v4_stats["clusters"] = len(areas_ha)
-            v4_stats["area_km2"] = sum(areas_ha) / 100
-            v4_stats["area_ha"] = sum(areas_ha)
-            v4_stats["top10_km2"] = sum(sorted(areas_ha, reverse=True)[:10]) / 100
-    except Exception:
-        pass
+        v5_stats = load_v5_stats()
+        v5_class_pixels, total_px = load_v5_class_pixels()
+        v5_thresholds = load_v5_thresholds()
+    except FileNotFoundError:
+        st.error("⚠️ Данные V5.0 не обнаружены.")
+        st.info(
+            "Пожалуйста, запустите сначала локальные скрипты генерации данных:\n"
+            "1. `python scripts/run_inference_v5.py` — расчет маски\n"
+            "2. `python scripts/v5_extract_stats.py` — извлечение статистики"
+        )
+        st.stop()
 
-    has_vector_aoi = AOI_VECTOR_PATH.exists()
-
+    # ── Top metrics panel (data from v5_stats.json) ──────────────────
     col1, col2, col3, col4 = st.columns(4)
     col1.metric(
-        "\u041e\u0431\u0449\u0430\u044f \u043f\u043b\u043e\u0449\u0430\u0434\u044c \u043f\u043e\u0441\u0430\u0434\u043a\u0438",
-        f"{v4_stats.get('area_km2', 'N/A'):,} km\u00b2"
-        if v4_stats.get('area_km2')
-        else "N/A (\u0436\u0434\u0438\u0442\u0435...)",
+        "Доступно гектаров",
+        f"{v5_stats.get('area_ha', 0):,.0f}",
     )
     col2.metric(
-        "\u041a\u043e\u043b\u0438\u0447\u0435\u0441\u0442\u0432\u043e \u0437\u043e\u043d",
-        f"{v4_stats.get('clusters', 'N/A'):,}"
-        if v4_stats.get('clusters')
-        else "N/A (\u0436\u0434\u0438\u0442\u0435...)",
+        "Количество участков",
+        f"{v5_stats.get('clusters', 0):,}",
     )
     col3.metric(
-        "\u041a\u0440\u0443\u043f\u043d\u0435\u0439\u0448\u0438\u0435 \u0437\u043e\u043d\u044b (\u0442\u043e\u043f-10)",
-        f"{v4_stats.get('top10_km2', 0):,.0f} km\u00b2"
-        if v4_stats.get('top10_km2')
-        else "N/A",
+        "Общая площадь посадки",
+        f"{v5_stats.get('area_km2', 0):,.0f} км²",
     )
-    col4.metric("\u041c\u0438\u043d\u0438\u043c\u0430\u043b\u044c\u043d\u044b\u0439 \u0440\u0430\u0437\u043c\u0435\u0440 \u0443\u0447\u0430\u0441\u0442\u043a\u0430", "\u22651 \u0433\u0430")
+    col4.metric("Минимальный размер участка", "≥10 га")
 
-    if not has_vector_aoi:
-        st.info(
-            "\u0414\u043b\u044f \u0442\u043e\u0447\u043d\u043e\u0439 \u0431\u0435\u0440\u0435\u0433\u043e\u0432\u043e\u0439 \u043b\u0438\u043d\u0438\u0438 "
-            "\u0438\u0441\u0442\u043e\u0440\u0438\u0447\u0435\u0441\u043a\u043e\u0433\u043e \u0410\u0440\u0430\u043b\u0430 \u043f\u043e\u043c\u0435\u0441\u0442\u0438\u0442\u0435 "
-            "\u0432\u0435\u043a\u0442\u043e\u0440\u043d\u044b\u0439 \u0444\u0430\u0439\u043b "
-            "\u0432 `outputs/aoi/aral_sea_1960.geojson`"
-        )
-
-    col_chart, col_text = st.columns([1, 1])
-
-    with col_chart:
-        pie_data = pd.DataFrame({
-            "\u0417\u043e\u043d\u0430": [
-                "\u0411\u043b\u0430\u0433\u043e\u043f\u0440\u0438\u044f\u0442\u043d\u0430\u044f \u0437\u043e\u043d\u0430 \u043f\u043e\u0441\u0430\u0434\u043a\u0438",
-                "\u0417\u043e\u043d\u0430 \u0440\u0438\u0441\u043a\u0430",
-                "\u0417\u043e\u043d\u0430 \u0440\u0438\u0441\u043a\u0430 (\u0441\u043e\u043b\u043e\u043d\u0447\u0430\u043a\u0438)",
-                "\u041f\u0440\u0435\u043f\u044f\u0442\u0441\u0442\u0432\u0438\u044f (\u043e\u0431\u0440\u044b\u0432\u044b)",
-            ],
-            "\u0414\u043e\u043b\u044f (%)": [65.0, 18.6, 16.0, 0.4],
-        })
-        fig = px.pie(
-            pie_data,
-            values="\u0414\u043e\u043b\u044f (%)",
-            names="\u0417\u043e\u043d\u0430",
-            color="\u0417\u043e\u043d\u0430",
-            color_discrete_map={
-                "\u0411\u043b\u0430\u0433\u043e\u043f\u0440\u0438\u044f\u0442\u043d\u0430\u044f \u0437\u043e\u043d\u0430 \u043f\u043e\u0441\u0430\u0434\u043a\u0438": "#2ecc40",
-                "\u0417\u043e\u043d\u0430 \u0440\u0438\u0441\u043a\u0430": "#f39c12",
-                "\u0417\u043e\u043d\u0430 \u0440\u0438\u0441\u043a\u0430 (\u0441\u043e\u043b\u043e\u043d\u0447\u0430\u043a\u0438)": "#e74c3c",
-                "\u041f\u0440\u0435\u043f\u044f\u0442\u0441\u0442\u0432\u0438\u044f (\u043e\u0431\u0440\u044b\u0432\u044b)": "#95a5a6",
-            },
-            hole=0.4,
-        )
-        fig.update_traces(textinfo="label+percent", textposition="outside")
-        fig.update_layout(showlegend=False, height=320, margin=dict(l=20, r=20, t=30, b=20))
-        st.plotly_chart(fig, use_container_width=True)
-
-    with col_text:
-        st.write("")
-        st.write("")
-        st.markdown("### \u041e \u0440\u0430\u0441\u043f\u0440\u0435\u0434\u0435\u043b\u0435\u043d\u0438\u0438 \u0437\u043e\u043d")
-        st.write(
-            "\u041a\u0440\u0443\u0433\u043e\u0432\u0430\u044f \u0434\u0438\u0430\u0433\u0440\u0430\u043c\u043c\u0430 "
-            "\u043f\u043e\u043a\u0430\u0437\u044b\u0432\u0430\u0435\u0442 \u043f\u043e\u043b\u043d\u044b\u0439 "
-            "\u044d\u043a\u043e\u043b\u043e\u0433\u0438\u0447\u0435\u0441\u043a\u0438\u0439 \u0441\u0440\u0435\u0437 "
-            "\u0438\u0441\u0442\u043e\u0440\u0438\u0447\u0435\u0441\u043a\u043e\u0433\u043e \u0434\u043d\u0430 "
-            "\u0410\u0440\u0430\u043b\u044c\u0441\u043a\u043e\u0433\u043e \u043c\u043e\u0440\u044f."
-        )
-        st.info(
-            "\u0412\u043e \u0438\u0437\u0431\u0435\u0436\u0430\u043d\u0438\u0435 \u043f\u0435\u0440\u0435\u0433\u0440\u0443\u0437\u043a\u0438 "
-            "\u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0439\u0441\u0430 \u0438 \u0434\u043b\u044f \u0443\u0434\u043e\u0431\u0441\u0442\u0432\u0430 "
-            "\u043f\u043b\u0430\u043d\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u044f, "
-            "\u043d\u0430 \u0438\u043d\u0442\u0435\u0440\u0430\u043a\u0442\u0438\u0432\u043d\u0443\u044e \u043a\u0430\u0440\u0442\u0443 "
-            "\u043d\u0438\u0436\u0435 \u0432\u044b\u0432\u0435\u0434\u0435\u043d\u044b \u0442\u043e\u043b\u044c\u043a\u043e "
-            "\u0431\u043b\u0430\u0433\u043e\u043f\u0440\u0438\u044f\u0442\u043d\u044b\u0435 \u0437\u043e\u043d\u044b "
-            "\u043f\u043e\u0441\u0430\u0434\u043a\u0438 (\u0437\u0435\u043b\u0435\u043d\u044b\u0439 \u0446\u0432\u0435\u0442). "
-            "\u0417\u043e\u043d\u044b \u0440\u0438\u0441\u043a\u0430 \u0438 \u043e\u0431\u0440\u044b\u0432\u044b "
-            "\u043f\u0440\u043e\u0433\u0440\u0430\u043c\u043c\u043d\u043e \u0441\u043a\u0440\u044b\u0442\u044b, "
-            "\u0442\u0430\u043a \u043a\u0430\u043a \u0442\u0443\u0434\u0430 \u043d\u0435 \u043d\u0430\u043f\u0440\u0430\u0432\u043b\u044f\u0435\u0442\u0441\u044f "
-            "\u0442\u0435\u0445\u043d\u0438\u043a\u0430."
-        )
-
-    st.divider()
-    st.markdown("### \u041a\u0430\u0440\u0442\u0430 \u043f\u0440\u0438\u0433\u043e\u0434\u043d\u044b\u0445 \u0443\u0447\u0430\u0441\u0442\u043a\u043e\u0432")
-
-    if MAP_PATH.exists():
-        with open(MAP_PATH, "r", encoding="utf-8") as f:
-            map_html = f.read()
-        components.html(map_html, height=750)
+    # ── Карта на самом видном месте ─────────────────────────────────
+    st.markdown("### 🗺️ Карта пригодных участков")
+    map_html = load_map_html_str()
+    if map_html:
+        components.html(map_html, height=600)
+        st.caption("🟢 V5.0 карта пригодности (разрешение 10 м)")
+        if V5_OPERATIONAL_PATH.exists():
+            gj_size_mb = V5_OPERATIONAL_PATH.stat().st_size / (1024 * 1024)
+            if gj_size_mb < 50:
+                gj_bytes = V5_OPERATIONAL_PATH.read_bytes()
+                st.download_button(
+                    label="📥 Скачать GPS-полигоны участков (GeoJSON, ≥10 га)",
+                    data=gj_bytes,
+                    file_name=V5_OPERATIONAL_PATH.name,
+                    mime="application/geo+json",
+                    help="Экспорт контуров оптимальных зон (только кластеры ≥10 га) для загрузки в GPS-навигаторы лесопосадочной техники",
+                )
+            else:
+                st.info(
+                    f"📥 Файл: `{V5_OPERATIONAL_PATH.name}` ({gj_size_mb:.0f} MB). "
+                    "Копируйте из `outputs/data/`."
+                )
     else:
         st.warning(
-            f"\u0424\u0430\u0439\u043b \u043a\u0430\u0440\u0442\u044b \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d: {MAP_PATH}. "
-            "\u0417\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u0435 `python scripts/phase5_v4_export.py`"
+            f"Файл карты не найден: {V5_MAP_PATH.name}. "
+            "Запустите `python scripts/run_inference_v5.py`"
         )
+
+    # ── Two-column layout: Resource Calculator (left) + Eco Audit (right)
+    col_calc, col_audit = st.columns([1, 1])
+
+    with col_calc:
+        st.markdown("### 🚜 Калькулятор ресурсов экспедиции")
+
+        area_ha = v5_stats.get("area_ha", 0)
+        if area_ha > 0:
+            density = st.slider(
+                "Плотность посадки (саженцев/га)",
+                min_value=1000, max_value=3000, value=1500, step=100,
+            )
+            productivity = st.slider(
+                "Производительность 1 трактора (га/смена)",
+                min_value=5, max_value=20, value=10, step=1,
+            )
+            fuel_rate = st.slider(
+                "Расход топлива трактора (л/га)",
+                min_value=10.0, max_value=30.0, value=15.0, step=0.5,
+            )
+
+            total_saplings = int(area_ha * density)
+            total_fuel = area_ha * fuel_rate
+            total_machine_shifts = area_ha / productivity
+
+            st.markdown("**Расчетные потребности:**")
+            col_r1, col_r2, col_r3 = st.columns(3)
+            col_r1.metric("Всего саженцев", f"{total_saplings:,}")
+            col_r2.metric("Объем ГСМ (дизель, л)", f"{total_fuel:,.0f}")
+            col_r3.metric("Машино-смен (всего)", f"{total_machine_shifts:,.0f}")
+
+            st.caption(
+                f"Расчет на базе {area_ha:,} га пригодных земель (V5.0). "
+                "Изменяйте параметры для разных сценариев."
+            )
+        else:
+            st.info("Загрузите данные V5.0 для расчета.")
+
+    with col_audit:
+        st.markdown("### 🔬 Спектральный аудит и структура рисков")
+
+        if total_px > 0:
+            pixels_json = json.dumps({str(k): v for k, v in v5_class_pixels.items()})
+            fig_audit = make_audit_fig(pixels_json, total_px)
+            if fig_audit is not None:
+                st.plotly_chart(fig_audit, use_container_width=True)
+        else:
+            st.info("Растровые данные классификации не найдены.")
 
 # ══════════════════════════════════════════════════════════════════════
 # TAB 3: ⚙️ Технические параметры моделей
@@ -362,22 +475,27 @@ with tab_dev:
     col_rules, col_stats = st.columns([1, 1])
 
     with col_rules:
-        st.markdown("**\u041f\u0440\u0430\u0432\u0438\u043b\u0430 \u043a\u043b\u0430\u0441\u0441\u0438\u0444\u0438\u043a\u0430\u0446\u0438\u0438:**")
+        st.markdown("**\u041f\u0440\u0430\u0432\u0438\u043b\u0430 \u043a\u043b\u0430\u0441\u0441\u0438\u0444\u0438\u043a\u0430\u0446\u0438\u0438 V5.0 (\u0430\u0434\u0430\u043f\u0442\u0438\u0432\u043d\u044b\u0435 \u043f\u043e\u0440\u043e\u0433\u0438):**")
         st.markdown(
             """
             | \u041a\u043b\u0430\u0441\u0441 | \u041f\u0440\u0430\u0432\u0438\u043b\u043e |
             |---|---|
-            | **1 Optimal** | NDMI < -0.055 **\u0438** Slope \u2264 5\u00b0 |
-            | **2 Risk** | -0.055 \u2264 NDMI \u2264 -0.025 **\u0438** Slope \u2264 5\u00b0 |
-            | **3 Dead** | NDMI > -0.025 (\u043a\u0430\u043f\u0438\u043b\u043b\u044f\u0440\u043d\u044b\u0439 \u043f\u043e\u0434\u044a\u0451\u043c) |
-            | **4 Topo Obstacle** | Slope > 5\u00b0 (\u043a\u0440\u0443\u0442\u044b\u0435 \u0441\u043a\u043b\u043e\u043d\u044b) |
-            | **0 Water/NoData** | NDWI > 0 \u0438\u043b\u0438 \u043d\u0435\u0442 \u0434\u0430\u043d\u043d\u044b\u0445 |
+            | **0 Water/NoData** | SCL\u2208[3,8,9,10] \u0438\u043b\u0438 MNDWI>0 \u0438\u043b\u0438 BI<0.15 |
+            | **5 Obstacle** | Slope > 5\u00b0 |
+            | **10 Vegetation** | NDVI > 0.08 |
+            | **4 Dead (brine)** | NDMI > P85 **\u0438** B8/B12 > P85 |
+            | **3 Risk (dry salt)** | NDSI_Green_SWIR2 > P85 **\u0438** NDMI < P15 |
+            | **1 Optimal** | \u0412\u0441\u0451 \u043e\u0441\u0442\u0430\u043b\u044c\u043d\u043e\u0435 |
 
-            **\u041a\u043b\u044e\u0447\u0435\u0432\u043e\u0435 \u043e\u0442\u043a\u0440\u044b\u0442\u0438\u0435:**
-            SI \u043e\u0442\u0431\u0440\u0430\u043a\u043e\u0432\u0430\u043d \u2014 Spearman
-            r(Salinity vs SI) = +0.41 (p=0.21).
-            NDMI: **r = +0.69** (p=0.02).
+            \u041f\u043e\u0440\u043e\u0433\u0438 P15/P85 \u0440\u0430\u0441\u0441\u0447\u0438\u0442\u044b\u0432\u0430\u044e\u0442\u0441\u044f \u0430\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0438 \u043f\u043e \u0432\u044b\u0431\u043e\u0440\u043a\u0435 \u0438\u0437 31 564 km\u00b2.
             """
+        )
+
+        st.markdown("**\u041a\u043b\u044e\u0447\u0435\u0432\u043e\u0435 \u043e\u0442\u043a\u0440\u044b\u0442\u0438\u0435:**")
+        st.markdown(
+            "SI \u043e\u0442\u0431\u0440\u0430\u043a\u043e\u0432\u0430\u043d \u2014 Spearman "
+            "r(Salinity vs SI) = +0.41 (p=0.21).  "
+            "NDMI: **r = +0.69** (p=0.02)."
         )
 
     with col_stats:
@@ -391,11 +509,29 @@ with tab_dev:
             "\u0431\u043e\u043b\u044c\u0448\u0435 \u043d\u0435 \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0435\u0442\u0441\u044f."
         )
 
-        st.markdown("**\u0420\u0430\u0441\u043f\u0440\u0435\u0434\u0435\u043b\u0435\u043d\u0438\u0435 V4:**")
+        st.markdown("**\u0420\u0430\u0441\u043f\u0440\u0435\u0434\u0435\u043b\u0435\u043d\u0438\u0435 V5.0 (10 \u043c):**")
+        v5_pcts = {}
+        if total_px and v5_class_pixels:
+            for c in [1, 3, 4, 5, 10]:
+                v5_pcts[c] = v5_class_pixels.get(c, 0) / total_px * 100
         stats_data = {
-            "Class": ["1 Optimal", "2 Risk", "3 Dead", "4 Topo", "0 Water"],
-            "px": ["100.6M", "28.8M", "24.7M", "557K", "11.5M"],
-            "%": ["65.0%", "18.6%", "16.0%", "0.4%", "\u2014"],
+            "Class": ["1 Optimal", "3 Dry Salt", "4 Brine", "5 Obstacle", "10 Veg", "0 Water"],
+            "\u041f\u0438\u043a\u0441\u0435\u043b\u0438": [
+                f"{v5_class_pixels.get(1, 0)/1e6:.1f}M" if v5_class_pixels else "\u2014",
+                f"{v5_class_pixels.get(3, 0)/1e3:.0f}K" if v5_class_pixels else "\u2014",
+                f"{v5_class_pixels.get(4, 0)/1e6:.1f}M" if v5_class_pixels else "\u2014",
+                f"{v5_class_pixels.get(5, 0)/1e3:.0f}K" if v5_class_pixels else "\u2014",
+                f"{v5_class_pixels.get(10, 0)/1e6:.1f}M" if v5_class_pixels else "\u2014",
+                "\u2014",
+            ],
+            "%": [
+                f"{v5_pcts.get(1, 0):.1f}%" if v5_pcts else "\u2014",
+                f"{v5_pcts.get(3, 0):.2f}%" if v5_pcts else "\u2014",
+                f"{v5_pcts.get(4, 0):.1f}%" if v5_pcts else "\u2014",
+                f"{v5_pcts.get(5, 0):.2f}%" if v5_pcts else "\u2014",
+                f"{v5_pcts.get(10, 0):.1f}%" if v5_pcts else "\u2014",
+                "\u2014",
+            ],
         }
         st.dataframe(pd.DataFrame(stats_data), hide_index=True)
 
@@ -411,22 +547,56 @@ with tab_dev:
             "\u043a\u043b\u0438\u043f\u043f\u0438\u043d\u0433\u0430."
         )
 
+    # ── V5 Dynamic Thresholds ──────────────────────────────────────
+    if v5_thresholds:
+        st.markdown("---")
+        st.subheader("\U0001f50d \u0410\u0434\u0430\u043f\u0442\u0438\u0432\u043d\u044b\u0435 \u0441\u043f\u0435\u043a\u0442\u0440\u0430\u043b\u044c\u043d\u044b\u0435 \u043f\u043e\u0440\u043e\u0433\u0438 V5.0")
+        st.caption("\u041f\u043e\u0440\u043e\u0433\u0438 \u0440\u0430\u0441\u0441\u0447\u0438\u0442\u0430\u043d\u044b \u0430\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0438 \u043f\u043e \u043f\u0440\u043e\u0440\u0435\u0436\u0435\u043d\u043d\u043e\u0439 \u0432\u044b\u0431\u043e\u0440\u043a\u0435 \u0441\u043d\u0438\u043c\u043a\u0430 Sentinel-2 (\u0432\u0435\u0441\u043d\u0430 2024)")
+
+        th_cols = st.columns(3)
+        metrics_def = [
+            ("\u0412\u043b\u0430\u0436\u043d\u043e\u0441\u0442\u044c (NDMI P15)", "NDMI_P15",
+             "\u041d\u0438\u0436\u043d\u044f\u044f \u0433\u0440\u0430\u043d\u0438\u0446\u0430 \u0432\u043b\u0430\u0436\u043d\u043e\u0441\u0442\u0438. "
+             "NDMI \u043d\u0438\u0436\u0435 \u044d\u0442\u043e\u0433\u043e \u043f\u043e\u0440\u043e\u0433\u0430 \u0443\u043a\u0430\u0437\u044b\u0432\u0430\u0435\u0442 \u043d\u0430 \u0441\u0443\u0445\u0438\u0435 \u0441\u043e\u043b\u043e\u043d\u0447\u0430\u043a\u0438 (\u043a\u043b\u0430\u0441\u0441 3)."),
+            ("\u0412\u043b\u0430\u0436\u043d\u043e\u0441\u0442\u044c (NDMI P85)", "NDMI_P85",
+             "\u0412\u0435\u0440\u0445\u043d\u044f\u044f \u0433\u0440\u0430\u043d\u0438\u0446\u0430 \u0432\u043b\u0430\u0436\u043d\u043e\u0441\u0442\u0438. "
+             "NDMI \u0432\u044b\u0448\u0435 \u044d\u0442\u043e\u0433\u043e \u043f\u043e\u0440\u043e\u0433\u0430 \u0441\u0438\u0433\u043d\u0430\u043b\u0438\u0437\u0438\u0440\u0443\u0435\u0442 \u043e\u0431 \u043e\u043f\u0430\u0441\u043d\u043e\u0441\u0442\u0438 \u043a\u0430\u043f\u0438\u043b\u043b\u044f\u0440\u043d\u043e\u0439 \u0440\u0430\u043f\u044b (\u043a\u043b\u0430\u0441\u0441 4)."),
+            ("\u0417\u0430\u0441\u043e\u043b\u0435\u043d\u0438\u0435 (NDSI G/SWIR2 P15)", "NDSI_Green_SWIR2_P15",
+             "\u041d\u0438\u0436\u043d\u044f\u044f \u0433\u0440\u0430\u043d\u0438\u0446\u0430 \u0441\u043e\u043b\u0435\u0432\u043e\u0433\u043e \u0438\u043d\u0434\u0435\u043a\u0441\u0430. "
+             "\u0418\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0435\u0442\u0441\u044f \u0434\u043b\u044f \u0432\u044b\u0434\u0435\u043b\u0435\u043d\u0438\u044f \u0441\u043e\u043b\u0435\u043d\u043e\u0441\u043d\u0430\u043a\u043e\u043f\u043b\u0435\u043d\u0438\u0439."),
+            ("\u0417\u0430\u0441\u043e\u043b\u0435\u043d\u0438\u0435 (NDSI G/SWIR2 P85)", "NDSI_Green_SWIR2_P85",
+             "\u0412\u0435\u0440\u0445\u043d\u044f\u044f \u0433\u0440\u0430\u043d\u0438\u0446\u0430 \u0441\u043e\u043b\u0435\u0432\u043e\u0433\u043e \u0438\u043d\u0434\u0435\u043a\u0441\u0430. "
+             "\u041f\u0440\u0435\u0432\u044b\u0448\u0435\u043d\u0438\u0435 \u0432\u043c\u0435\u0441\u0442\u0435 \u0441 NDMI < P15 \u043e\u043f\u0440\u0435\u0434\u0435\u043b\u044f\u0435\u0442 \u0441\u0443\u0445\u0438\u0435 \u0441\u043e\u043b\u043e\u043d\u0447\u0430\u043a\u0438 (\u043a\u043b\u0430\u0441\u0441 3)."),
+            ("\u0420\u0430\u043f\u0430 (B8/B12 P15)", "BR_NIR_SWIR2_P15",
+             "\u041d\u0438\u0436\u043d\u044f\u044f \u0433\u0440\u0430\u043d\u0438\u0446\u0430 \u043e\u0442\u043d\u043e\u0448\u0435\u043d\u0438\u044f NIR/SWIR2. "
+             "\u0425\u0430\u0440\u0430\u043a\u0442\u0435\u0440\u0438\u0437\u0443\u0435\u0442 \u0441\u0442\u0440\u0443\u043a\u0442\u0443\u0440\u0443 \u043f\u043e\u0432\u0435\u0440\u0445\u043d\u043e\u0441\u0442\u0438."),
+            ("\u0420\u0430\u043f\u0430 (B8/B12 P85)", "BR_NIR_SWIR2_P85",
+             "\u0412\u0435\u0440\u0445\u043d\u044f\u044f \u0433\u0440\u0430\u043d\u0438\u0446\u0430 \u043e\u0442\u043d\u043e\u0448\u0435\u043d\u0438\u044f NIR/SWIR2. "
+             "\u041f\u0440\u0435\u0432\u044b\u0448\u0435\u043d\u0438\u0435 \u0432\u043c\u0435\u0441\u0442\u0435 \u0441 NDMI > P85 \u0443\u043a\u0430\u0437\u044b\u0432\u0430\u0435\u0442 \u043d\u0430 \u043a\u0430\u043f\u0438\u043b\u043b\u044f\u0440\u043d\u0443\u044e \u0440\u0430\u043f\u0443 (\u043a\u043b\u0430\u0441\u0441 4)."),
+        ]
+        for i, (label, key, help_text) in enumerate(metrics_def):
+            val = v5_thresholds.get(key, "N/A")
+            if isinstance(val, float):
+                val = f"{val:.4f}"
+            th_cols[i % 3].metric(label, val, help=help_text)
+
     st.markdown("---")
     st.subheader("\u0421\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u0435 \u0432\u0435\u0440\u0441\u0438\u0439")
 
     comp_data = {
-        "\u0412\u0435\u0440\u0441\u0438\u044f": ["V1.0", "V2.0", "V3.0", "V3.2", "V4", "**V4 + Coast**"],
-        "AOI": ["BBOX", "BBOX", "BBOX", "V1.0 mask", "data valid", "**\u0432\u0435\u043a\u0442\u043e\u0440**"],
-        "Optimal": ["6,558 km\u00b2", "\u2014", "75,165 km\u00b2", "14,962 km\u00b2", "~90K km\u00b2*", "**TBD**"],
-        "\u0421\u0442\u0430\u0442\u0443\u0441": ["Archive", "Frozen", "Archive", "Archive", "Beta", "**Goal**"],
+        "\u0412\u0435\u0440\u0441\u0438\u044f": ["V1.0", "V2.0", "V3.2", "V4", "**V5.0**"],
+        "\u0420\u0430\u0437\u0440\u0435\u0448\u0435\u043d\u0438\u0435": ["30 m", "30 m", "30 m", "30 m", "**10 m**"],
+        "\u041a\u043b\u0430\u0441\u0441\u044b": ["2", "\u2014", "3", "5", "**6**"],
+        "\u0418\u043d\u0434\u0435\u043a\u0441\u044b": ["XGBoost", "\u2014", "NDMI", "NDMI+Slope", "**NDMI+NDSI+BR+NDVI+BI**"],
+        "\u041f\u043e\u0440\u043e\u0433\u0438": ["ML", "\u2014", "\u0424\u0438\u043a\u0441\u0438\u0440\u043e\u0432\u0430\u043d\u043d\u044b\u0435", "\u0424\u0438\u043a\u0441\u0438\u0440\u043e\u0432\u0430\u043d\u043d\u044b\u0435", "**\u0410\u0434\u0430\u043f\u0442\u0438\u0432\u043d\u044b\u0435 P15/P85**"],
+        "\u0421\u0442\u0430\u0442\u0443\u0441": ["Archive", "Frozen", "Archive", "Beta", "**Production**"],
     }
     st.dataframe(pd.DataFrame(comp_data), hide_index=True, width="stretch")
     st.caption(
-        "* 90K km\u00b2 \u0432\u043a\u043b\u044e\u0447\u0430\u0435\u0442 \u043f\u0443\u0441\u0442\u044b\u043d\u0438 "
-        "\u0432\u043d\u0435 \u0438\u0441\u0442\u043e\u0440\u0438\u0447\u0435\u0441\u043a\u043e\u0433\u043e \u0410\u0440\u0430\u043b\u0430. "
-        "\u0424\u0438\u043d\u0430\u043b\u044c\u043d\u0430\u044f \u0446\u0438\u0444\u0440\u0430 \u0431\u0443\u0434\u0435\u0442 "
-        "\u043f\u043e\u0441\u043b\u0435 \u043a\u043b\u0438\u043f\u043f\u0438\u043d\u0433\u0430 "
-        "\u043f\u043e \u0431\u0435\u0440\u0435\u0433\u043e\u0432\u043e\u0439 \u043b\u0438\u043d\u0438\u0438 1960 \u0433\u043e\u0434\u0430."
+        "V5.0 \u0440\u0430\u0431\u043e\u0442\u0430\u0435\u0442 \u043d\u0430 \u043d\u0430\u0442\u0438\u0432\u043d\u043e\u043c "
+        "\u0440\u0430\u0437\u0440\u0435\u0448\u0435\u043d\u0438\u0438 Sentinel-2 (10 \u043c) \u0441 "
+        "\u0430\u0434\u0430\u043f\u0442\u0438\u0432\u043d\u044b\u043c\u0438 \u043f\u043e\u0440\u043e\u0433\u0430\u043c\u0438 "
+        "\u043f\u043e\u0434 \u043a\u043e\u043d\u043a\u0440\u0435\u0442\u043d\u0443\u044e \u0441\u0446\u0435\u043d\u0443."
     )
 
     # ── Ground Truth ─────────────────────────────────────────────────

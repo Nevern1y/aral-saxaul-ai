@@ -29,6 +29,18 @@ outputs/data/*.vrt
 outputs/tiles/
 outputs/phase1_checkpoint.json
 
+# Generated large GeoJSON (can be regenerated from scripts)
+outputs/data/optimal_zones_v*.geojson
+outputs/data/operational_zones_v*.geojson
+
+# Generated temp & bulk logistics
+outputs/logistics/temp/
+outputs/logistics/tractor_tasks/
+outputs/logistics/tractor_tasks_v5/
+
+# AOI boundary (optional, not needed for dashboard)
+outputs/aoi/*.geojson
+
 # IDE
 .idea/
 .vscode/
