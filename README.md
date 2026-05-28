@@ -4,7 +4,7 @@
 
 V5.1 сохраняет V5 rule-based pipeline на нативном разрешении Sentinel-2 (10 м), но добавляет научный слой: provenance, нормализованные почвенные таблицы, dual-coordinate validation и осторожную интерпретацию результата как screening product.
 
-[→ Открыть дашборд](https://aral-saxaul-ai.streamlit.app)
+[→ Открыть дашборд](https://aral-saxaul-ai-7skntrgzemfiwqmjd7feoo.streamlit.app/)
 
 ---
 
