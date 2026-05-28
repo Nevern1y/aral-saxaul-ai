@@ -1,0 +1,496 @@
+{
+  "version": "V5.1-science-validation",
+  "coordinate_policy": "dual_source_unresolved",
+  "n_point_samples": 22,
+  "n_authoritative_point_samples": 0,
+  "n_field_sites": 11,
+  "n_profiles_with_coordinates": 11,
+  "n_lab_only_profiles": 10,
+  "authority_template_present": true,
+  "authority_template_rows": 11,
+  "authority_template_status_counts": {
+    "unresolved": 11
+  },
+  "authority_template_resolved_rows": 0,
+  "authority_template_unresolved_rows": 11,
+  "authority_template_incomplete_rows": 0,
+  "authority_template_invalid_rows": 0,
+  "coordinate_conflict_median": 132618.7,
+  "coordinate_conflict_min": 131715.2,
+  "coordinate_conflict_max": 134796.2,
+  "correlations": [
+    {
+      "target": "top_salinity_pct",
+      "feature": "ndmi",
+      "n": 10,
+      "spearman_r": 0.2,
+      "p_value": 0.579584,
+      "bootstrap_ci95": [
+        -0.597671,
+        0.849349
+      ],
+      "status": "ok",
+      "coordinate_source": "raw_aralfield_dd"
+    },
+    {
+      "target": "top_salinity_pct",
+      "feature": "ndvi",
+      "n": 10,
+      "spearman_r": 0.369697,
+      "p_value": 0.29305,
+      "bootstrap_ci95": [
+        -0.430384,
+        0.899387
+      ],
+      "status": "ok",
+      "coordinate_source": "raw_aralfield_dd"
+    },
+    {
+      "target": "top_salinity_pct",
+      "feature": "ndwi_nir",
+      "n": 10,
+      "spearman_r": -0.321212,
+      "p_value": 0.365468,
+      "bootstrap_ci95": [
+        -0.888199,
+        0.430384
+      ],
+      "status": "ok",
+      "coordinate_source": "raw_aralfield_dd"
+    },
+    {
+      "target": "top_salinity_pct",
+      "feature": "ndsi_green_swir2",
+      "n": 10,
+      "spearman_r": -0.066667,
+      "p_value": 0.854813,
+      "bootstrap_ci95": [
+        -0.620313,
+        0.641083
+      ],
+      "status": "ok",
+      "coordinate_source": "raw_aralfield_dd"
+    },
+    {
+      "target": "top_salinity_pct",
+      "feature": "br_nir_swir2",
+      "n": 10,
+      "spearman_r": 0.478788,
+      "p_value": 0.161523,
+      "bootstrap_ci95": [
+        -0.311921,
+        0.838509
+      ],
+      "status": "ok",
+      "coordinate_source": "raw_aralfield_dd"
+    },
+    {
+      "target": "top_salinity_pct",
+      "feature": "bi",
+      "n": 11,
+      "spearman_r": -0.118182,
+      "p_value": 0.729285,
+      "bootstrap_ci95": [
+        -0.698136,
+        0.538785
+      ],
+      "status": "ok",
+      "coordinate_source": "raw_aralfield_dd"
+    },
+    {
+      "target": "field_salinity_0_20",
+      "feature": "ndmi",
+      "n": 10,
+      "spearman_r": 0.006061,
+      "p_value": 0.986743,
+      "bootstrap_ci95": [
+        -0.776398,
+        0.696344
+      ],
+      "status": "ok",
+      "coordinate_source": "raw_aralfield_dd"
+    },
+    {
+      "target": "field_salinity_0_20",
+      "feature": "ndvi",
+      "n": 10,
+      "spearman_r": -0.393939,
+      "p_value": 0.259998,
+      "bootstrap_ci95": [
+        -0.92454,
+        0.308264
+      ],
+      "status": "ok",
+      "coordinate_source": "raw_aralfield_dd"
+    },
+    {
+      "target": "field_salinity_0_20",
+      "feature": "ndwi_nir",
+      "n": 10,
+      "spearman_r": 0.381818,
+      "p_value": 0.276255,
+      "bootstrap_ci95": [
+        -0.321173,
+        0.874214
+      ],
+      "status": "ok",
+      "coordinate_source": "raw_aralfield_dd"
+    },
+    {
+      "target": "field_salinity_0_20",
+      "feature": "ndsi_green_swir2",
+      "n": 10,
+      "spearman_r": 0.478788,
+      "p_value": 0.161523,
+      "bootstrap_ci95": [
+        -0.371167,
+        0.962025
+      ],
+      "status": "ok",
+      "coordinate_source": "raw_aralfield_dd"
+    },
+    {
+      "target": "field_salinity_0_20",
+      "feature": "br_nir_swir2",
+      "n": 10,
+      "spearman_r": -0.224242,
+      "p_value": 0.533401,
+      "bootstrap_ci95": [
+        -0.900016,
+        0.54717
+      ],
+      "status": "ok",
+      "coordinate_source": "raw_aralfield_dd"
+    },
+    {
+      "target": "field_salinity_0_20",
+      "feature": "bi",
+      "n": 11,
+      "spearman_r": 0.109091,
+      "p_value": 0.749509,
+      "bootstrap_ci95": [
+        -0.639038,
+        0.711538
+      ],
+      "status": "ok",
+      "coordinate_source": "raw_aralfield_dd"
+    },
+    {
+      "target": "field_ec_0_20",
+      "feature": "ndmi",
+      "n": 10,
+      "spearman_r": -0.030303,
+      "p_value": 0.933773,
+      "bootstrap_ci95": [
+        -0.839815,
+        0.685632
+      ],
+      "status": "ok",
+      "coordinate_source": "raw_aralfield_dd"
+    },
+    {
+      "target": "field_ec_0_20",
+      "feature": "ndvi",
+      "n": 10,
+      "spearman_r": -0.309091,
+      "p_value": 0.384841,
+      "bootstrap_ci95": [
+        -0.92454,
+        0.41186
+      ],
+      "status": "ok",
+      "coordinate_source": "raw_aralfield_dd"
+    },
+    {
+      "target": "field_ec_0_20",
+      "feature": "ndwi_nir",
+      "n": 10,
+      "spearman_r": 0.29697,
+      "p_value": 0.404702,
+      "bootstrap_ci95": [
+        -0.423214,
+        0.874214
+      ],
+      "status": "ok",
+      "coordinate_source": "raw_aralfield_dd"
+    },
+    {
+      "target": "field_ec_0_20",
+      "feature": "ndsi_green_swir2",
+      "n": 10,
+      "spearman_r": 0.406061,
+      "p_value": 0.244282,
+      "bootstrap_ci95": [
+        -0.445346,
+        0.962025
+      ],
+      "status": "ok",
+      "coordinate_source": "raw_aralfield_dd"
+    },
+    {
+      "target": "field_ec_0_20",
+      "feature": "br_nir_swir2",
+      "n": 10,
+      "spearman_r": -0.248485,
+      "p_value": 0.488776,
+      "bootstrap_ci95": [
+        -0.962733,
+        0.518987
+      ],
+      "status": "ok",
+      "coordinate_source": "raw_aralfield_dd"
+    },
+    {
+      "target": "field_ec_0_20",
+      "feature": "bi",
+      "n": 11,
+      "spearman_r": 0.090909,
+      "p_value": 0.790373,
+      "bootstrap_ci95": [
+        -0.653969,
+        0.677849
+      ],
+      "status": "ok",
+      "coordinate_source": "raw_aralfield_dd"
+    },
+    {
+      "target": "top_salinity_pct",
+      "feature": "ndmi",
+      "n": 11,
+      "spearman_r": 0.281818,
+      "p_value": 0.401145,
+      "bootstrap_ci95": [
+        -0.467337,
+        0.8506
+      ],
+      "status": "ok",
+      "coordinate_source": "shifted_odt_derived_dd"
+    },
+    {
+      "target": "top_salinity_pct",
+      "feature": "ndvi",
+      "n": 11,
+      "spearman_r": -0.263636,
+      "p_value": 0.433441,
+      "bootstrap_ci95": [
+        -0.766409,
+        0.386047
+      ],
+      "status": "ok",
+      "coordinate_source": "shifted_odt_derived_dd"
+    },
+    {
+      "target": "top_salinity_pct",
+      "feature": "ndwi_nir",
+      "n": 11,
+      "spearman_r": -0.4,
+      "p_value": 0.222868,
+      "bootstrap_ci95": [
+        -0.886256,
+        0.232411
+      ],
+      "status": "ok",
+      "coordinate_source": "shifted_odt_derived_dd"
+    },
+    {
+      "target": "top_salinity_pct",
+      "feature": "ndsi_green_swir2",
+      "n": 11,
+      "spearman_r": 0.327273,
+      "p_value": 0.325895,
+      "bootstrap_ci95": [
+        -0.446115,
+        0.839314
+      ],
+      "status": "ok",
+      "coordinate_source": "shifted_odt_derived_dd"
+    },
+    {
+      "target": "top_salinity_pct",
+      "feature": "br_nir_swir2",
+      "n": 11,
+      "spearman_r": 0.4,
+      "p_value": 0.222868,
+      "bootstrap_ci95": [
+        -0.394329,
+        0.897208
+      ],
+      "status": "ok",
+      "coordinate_source": "shifted_odt_derived_dd"
+    },
+    {
+      "target": "top_salinity_pct",
+      "feature": "bi",
+      "n": 11,
+      "spearman_r": 0.127273,
+      "p_value": 0.709215,
+      "bootstrap_ci95": [
+        -0.59434,
+        0.823297
+      ],
+      "status": "ok",
+      "coordinate_source": "shifted_odt_derived_dd"
+    },
+    {
+      "target": "field_salinity_0_20",
+      "feature": "ndmi",
+      "n": 11,
+      "spearman_r": -0.236364,
+      "p_value": 0.484091,
+      "bootstrap_ci95": [
+        -0.833491,
+        0.385473
+      ],
+      "status": "ok",
+      "coordinate_source": "shifted_odt_derived_dd"
+    },
+    {
+      "target": "field_salinity_0_20",
+      "feature": "ndvi",
+      "n": 11,
+      "spearman_r": 0.527273,
+      "p_value": 0.095565,
+      "bootstrap_ci95": [
+        -0.111371,
+        0.92276
+      ],
+      "status": "ok",
+      "coordinate_source": "shifted_odt_derived_dd"
+    },
+    {
+      "target": "field_salinity_0_20",
+      "feature": "ndwi_nir",
+      "n": 11,
+      "spearman_r": -0.181818,
+      "p_value": 0.592615,
+      "bootstrap_ci95": [
+        -0.846262,
+        0.654238
+      ],
+      "status": "ok",
+      "coordinate_source": "shifted_odt_derived_dd"
+    },
+    {
+      "target": "field_salinity_0_20",
+      "feature": "ndsi_green_swir2",
+      "n": 11,
+      "spearman_r": -0.381818,
+      "p_value": 0.24656,
+      "bootstrap_ci95": [
+        -0.847637,
+        0.265179
+      ],
+      "status": "ok",
+      "coordinate_source": "shifted_odt_derived_dd"
+    },
+    {
+      "target": "field_salinity_0_20",
+      "feature": "br_nir_swir2",
+      "n": 11,
+      "spearman_r": -0.418182,
+      "p_value": 0.20057,
+      "bootstrap_ci95": [
+        -0.843995,
+        0.236773
+      ],
+      "status": "ok",
+      "coordinate_source": "shifted_odt_derived_dd"
+    },
+    {
+      "target": "field_salinity_0_20",
+      "feature": "bi",
+      "n": 11,
+      "spearman_r": -0.109091,
+      "p_value": 0.749509,
+      "bootstrap_ci95": [
+        -0.721394,
+        0.590884
+      ],
+      "status": "ok",
+      "coordinate_source": "shifted_odt_derived_dd"
+    },
+    {
+      "target": "field_ec_0_20",
+      "feature": "ndmi",
+      "n": 11,
+      "spearman_r": -0.254545,
+      "p_value": 0.450037,
+      "bootstrap_ci95": [
+        -0.860062,
+        0.359515
+      ],
+      "status": "ok",
+      "coordinate_source": "shifted_odt_derived_dd"
+    },
+    {
+      "target": "field_ec_0_20",
+      "feature": "ndvi",
+      "n": 11,
+      "spearman_r": 0.509091,
+      "p_value": 0.109737,
+      "bootstrap_ci95": [
+        -0.127028,
+        0.896726
+      ],
+      "status": "ok",
+      "coordinate_source": "shifted_odt_derived_dd"
+    },
+    {
+      "target": "field_ec_0_20",
+      "feature": "ndwi_nir",
+      "n": 11,
+      "spearman_r": -0.172727,
+      "p_value": 0.611542,
+      "bootstrap_ci95": [
+        -0.80395,
+        0.654238
+      ],
+      "status": "ok",
+      "coordinate_source": "shifted_odt_derived_dd"
+    },
+    {
+      "target": "field_ec_0_20",
+      "feature": "ndsi_green_swir2",
+      "n": 11,
+      "spearman_r": -0.409091,
+      "p_value": 0.211545,
+      "bootstrap_ci95": [
+        -0.871128,
+        0.253739
+      ],
+      "status": "ok",
+      "coordinate_source": "shifted_odt_derived_dd"
+    },
+    {
+      "target": "field_ec_0_20",
+      "feature": "br_nir_swir2",
+      "n": 11,
+      "spearman_r": -0.436364,
+      "p_value": 0.179665,
+      "bootstrap_ci95": [
+        -0.875059,
+        0.221232
+      ],
+      "status": "ok",
+      "coordinate_source": "shifted_odt_derived_dd"
+    },
+    {
+      "target": "field_ec_0_20",
+      "feature": "bi",
+      "n": 11,
+      "spearman_r": -0.127273,
+      "p_value": 0.709215,
+      "bootstrap_ci95": [
+        -0.750231,
+        0.543754
+      ],
+      "status": "ok",
+      "coordinate_source": "shifted_odt_derived_dd"
+    }
+  ],
+  "outputs": {
+    "point_samples": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\outputs\\science\\v5_point_samples.csv",
+    "summary_json": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\outputs\\science\\v5_validation_summary.json",
+    "report_md": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\outputs\\science\\v5_validation_report.md"
+  }
+}

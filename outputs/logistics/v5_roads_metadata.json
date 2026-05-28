@@ -1,0 +1,18 @@
+{
+  "version": "V5.1-roads",
+  "source": "OpenStreetMap via Overpass API",
+  "kazakhstan_access_bbox": [
+    56.0,
+    43.0,
+    66.5,
+    47.8
+  ],
+  "highway_filter": "motorway|trunk|primary|secondary|tertiary|unclassified|road|track|service|residential|living_street|primary_link|secondary_link|tertiary_link",
+  "kazakhstan_road_segments": 14915,
+  "merged_road_segments": 16244,
+  "failed_tiles": [],
+  "outputs": {
+    "kazakhstan_access_roads": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\outputs\\logistics\\kazakhstan_access_roads.geojson",
+    "merged_roads": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\outputs\\logistics\\aralkum_roads.geojson"
+  }
+}

@@ -34,8 +34,8 @@ logging.basicConfig(
 log = logging.getLogger("fetch_gee_v5")
 
 # ── Defaults ────────────────────────────────────────────────────────────
-SEASON_START: str = "2024-05-01"
-SEASON_END: str = "2024-05-15"
+SEASON_START: str = "2025-04-01"
+SEASON_END: str = "2025-06-30"
 MAX_CLOUD_PCT: int = 10
 MAX_PIXELS: int = 1_000_000_000_000  # 1e12 — sufficient for the full AOI
 
@@ -136,7 +136,7 @@ def _export_single(
     crs: str,
 ) -> ee.batch.Task:
     """Export a single-band image to Google Drive."""
-    task_label = f"Aral_{band_name}_{scale}m_Spring2024"
+    task_label = f"Aral_{band_name}_{scale}m_Spring2025"
     task = ee.batch.Export.image.toDrive(
         image=image.clip(aoi).unmask(0),
         description=task_label,
@@ -268,7 +268,7 @@ def main(
         log.info("Dry run — GEE not required. Tasks that would be launched:")
         for bn in band_names:
             s = scales[bn]
-            log.info("  Aral_%s_%dm_Spring2024  ->  %s/", bn, s, folder)
+            log.info("  Aral_%s_%dm_Spring2025  ->  %s/", bn, s, folder)
         return
 
     # Initialise GEE
@@ -293,7 +293,7 @@ def main(
     log.info("Expected files:")
     for bn in band_names:
         s = scales[bn]
-        log.info("  Aral_%s_%dm_Spring2024.tif", bn, s)
+        log.info("  Aral_%s_%dm_Spring2025.tif", bn, s)
 
 
 if __name__ == "__main__":

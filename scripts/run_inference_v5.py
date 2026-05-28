@@ -1,11 +1,11 @@
 """
-V5.0 Rule-Based Classification with Multi-Index Salt Physics
+V5.1 Rule-Based Screening Classification with Multi-Index Salt Physics
 Sentinel-2 10m native resolution, in-memory SWIR upsampling via WarpedVRT.
 
 Classes
 -------
-0  WATER_NODATA   — SCL clouds/water/shadow, MNDWI>0, or BI<0.15 shadow
-1  OPTIMAL        — Default for bare dry land
+0  WATER_NODATA   — SCL clouds/water/shadow, invalid inputs, NDWI(Green,NIR)>0, or BI<0.15 shadow
+1  CANDIDATE      — Residual screening class for bare dry land
 3  RISK_DRY_SALT  — High NDSI_Green_SWIR2 + low NDMI (dry salt crust)
 4  DEAD_WET_TOXIC — High NDMI + high BR_NIR_SWIR2 (capillary brine)
 5  OBSTACLE_TOPO  — Slope > 5°
@@ -26,6 +26,7 @@ from rasterio.enums import Resampling
 from rasterio.vrt import WarpedVRT
 
 from v5_config import ZoneClass
+from v5_rules import WATER_SCL_VALUES, classify_arrays, compute_indices
 
 warnings.filterwarnings("ignore")
 logging.basicConfig(
@@ -48,7 +49,7 @@ def compute_global_thresholds(paths: Dict[str, Path]) -> Dict[str, float]:
     --------
     - 10m bands (B3, B4, B8, SCL):  step = 20  → 200 m effective spacing
     - 20m bands (B11, B12):          step = 10  → 200 m effective spacing
-    - Mask: SCL == 5 (Bare Soils) AND MNDWI <= 0
+    - Mask: SCL not in water/cloud/shadow classes AND NDWI(Green,NIR) <= 0
 
     Returns
     -------
@@ -96,12 +97,11 @@ def compute_global_thresholds(paths: Dict[str, Path]) -> Dict[str, float]:
     b11 /= 10000.0
     b12 /= 10000.0
 
-    # --- Land mask (native 10m NDWI — no resampling artefact) ---
-    with np.errstate(divide="ignore", invalid="ignore"):
-        ndwi = (b3 - b8) / (b3 + b8)
+    indices = compute_indices(b3, b4, b8, b11, b12)
+    ndwi = indices["ndwi_nir"]
 
     valid = (
-        ~np.isin(scl, [3, 6, 7, 8, 9, 10])
+        ~np.isin(scl, WATER_SCL_VALUES)
         & (ndwi <= 0)
         & np.isfinite(ndwi)
         & np.isfinite(b3)
@@ -116,13 +116,9 @@ def compute_global_thresholds(paths: Dict[str, Path]) -> Dict[str, float]:
     if n_valid < 1000:
         log.warning("  Very few valid samples (%d) — thresholds may be unreliable", n_valid)
 
-    b3_v, b8_v = b3[valid], b8[valid]
-    b11_v, b12_v = b11[valid], b12[valid]
-
-    with np.errstate(divide="ignore", invalid="ignore"):
-        ndmi = (b8_v - b11_v) / (b8_v + b11_v)
-        ndsi_green_swir2 = (b3_v - b12_v) / (b3_v + b12_v)
-        br_nir_swir2 = b8_v / b12_v
+    ndmi = indices["ndmi"][valid]
+    ndsi_green_swir2 = indices["ndsi_green_swir2"][valid]
+    br_nir_swir2 = indices["br_nir_swir2"][valid]
 
     thresholds = {
         "NDMI_P15": float(np.nanpercentile(ndmi, 15)),
@@ -164,7 +160,7 @@ def run_block_inference(
         Path for the resulting ``uint8`` suitability GeoTIFF.
     """
     log.info("=" * 60)
-    log.info("RUN BLOCK INFERENCE  V5.0")
+    log.info("RUN BLOCK INFERENCE  V5.1")
     log.info("=" * 60)
 
     t_start = time.time()
@@ -197,7 +193,7 @@ def run_block_inference(
         dtype="uint8",
         count=1,
         compress="lzw",
-        nodata=int(ZoneClass.WATER_NODATA),
+        nodata=None,
         tiled=True,
         blockxsize=256,
         blockysize=256,
@@ -257,87 +253,11 @@ def run_block_inference(
             b11 /= 10000.0
             b12 /= 10000.0
 
-            # --- Spectral indices ---
-            with np.errstate(divide="ignore", invalid="ignore"):
-                ndwi = (b3 - b8) / (b3 + b8)
-                ndvi = (b8 - b4) / (b8 + b4)
-                ndmi = (b8 - b11) / (b8 + b11)
-                ndsi_green_swir2 = (b3 - b12) / (b3 + b12)
-                br_nir_swir2 = b8 / b12
-                bi = np.sqrt(b3 ** 2 + b4 ** 2)
+            # --- Spectral indices and classification cascade ---
+            indices = compute_indices(b3, b4, b8, b11, b12)
 
             rows, cols = b8.shape
-
-            # --- Classification cascade (priority order) ---
-            cond_water = (
-                np.isin(scl, [3, 6, 7, 8, 9, 10])
-                | (ndwi > 0)
-                | ~np.isfinite(ndwi)
-            )
-
-            cond_topo = (
-                ~cond_water
-                & np.isfinite(slope)
-                & (slope > 5.0)
-            )
-
-            cond_veg = (
-                ~cond_water
-                & ~cond_topo
-                & np.isfinite(ndvi)
-                & (ndvi > 0.08)
-            )
-
-            cond_shadow = (
-                ~cond_water
-                & ~cond_topo
-                & ~cond_veg
-                & np.isfinite(bi)
-                & (bi < 0.15)
-            )
-
-            cond_dead = (
-                ~cond_water
-                & ~cond_topo
-                & ~cond_veg
-                & ~cond_shadow
-                & np.isfinite(ndmi)
-                & np.isfinite(br_nir_swir2)
-                & (ndmi > thresholds["NDMI_P85"])
-                & (br_nir_swir2 > thresholds["BR_NIR_SWIR2_P85"])
-            )
-
-            cond_risk = (
-                ~cond_water
-                & ~cond_topo
-                & ~cond_veg
-                & ~cond_shadow
-                & ~cond_dead
-                & np.isfinite(ndsi_green_swir2)
-                & np.isfinite(ndmi)
-                & (ndsi_green_swir2 > thresholds["NDSI_Green_SWIR2_P85"])
-                & (ndmi < thresholds["NDMI_P15"])
-            )
-
-            out = np.select(
-                [
-                    cond_water.ravel(),
-                    cond_topo.ravel(),
-                    cond_veg.ravel(),
-                    cond_shadow.ravel(),
-                    cond_dead.ravel(),
-                    cond_risk.ravel(),
-                ],
-                [
-                    ZoneClass.WATER_NODATA,
-                    ZoneClass.OBSTACLE_TOPO,
-                    ZoneClass.VEGETATION,
-                    ZoneClass.WATER_NODATA,
-                    ZoneClass.DEAD_WET_TOXIC,
-                    ZoneClass.RISK_DRY_SALT,
-                ],
-                default=ZoneClass.OPTIMAL,
-            ).reshape(rows, cols).astype(np.uint8)
+            out = classify_arrays(scl, slope, indices, thresholds).reshape(rows, cols)
 
             dst.write(out, 1, window=window)
 
@@ -366,7 +286,7 @@ def run_block_inference(
 if __name__ == "__main__":
     import sys
 
-    BASE = Path(r"F:\OPENCODE PROJECTS\aral-saxaul-ai")
+    BASE = Path(__file__).resolve().parent.parent
     DATA = BASE / "outputs" / "data"
 
     BAND_PATHS = {
@@ -388,7 +308,7 @@ if __name__ == "__main__":
 
     import json
 
-    log.info("V5.0  Aral Saxaul AI  —  Multi-Index Rule-Based Pipeline")
+    log.info("V5.1  Aral Saxaul AI  —  Multi-Index Rule-Based Screening Pipeline")
     log.info("Input bands:")
     for k, v in BAND_PATHS.items():
         log.info("  %-6s  %s", k, v)

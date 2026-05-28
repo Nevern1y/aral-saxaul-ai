@@ -1,5 +1,5 @@
 """
-qa_forensic_audit_v5.py — Reverse-Engineering Pixel Audit for V5.0.
+qa_forensic_audit_v5.py — Reverse-Engineering Pixel Audit for V5.1.
 
 Picks 100 random pixels per class from the final map, re-computes all
 spectral indices from raw band values, and asserts every classification
@@ -24,6 +24,8 @@ from rasterio.enums import Resampling
 from rasterio.vrt import WarpedVRT
 from rasterio.windows import Window
 
+from v5_rules import CLASS_NAMES, classify_pixel, compute_indices
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -45,10 +47,6 @@ BAND_PATHS = {
 }
 MAP_PATH = DATA / "suitability_map_v5.tif"
 THRESH_PATH = DATA / "thresholds_v5.json"
-
-# ── Class labels (must match v5_config.ZoneClass) ─────────────────────
-CLASS_NAMES = {0: "WATER_NODATA", 1: "OPTIMAL", 3: "RISK_DRY_SALT",
-               4: "DEAD_WET_TOXIC", 5: "OBSTACLE_TOPO", 10: "VEGETATION"}
 
 N_SAMPLES_PER_CLASS = 100
 RANDOM_SEED = 42
@@ -94,65 +92,9 @@ def _recompute_and_verify(
     b11 /= 10000.0
     b12 /= 10000.0
 
-    with np.errstate(divide="ignore", invalid="ignore"):
-        mndwi = (b3 - b11) / (b3 + b11) if (b3 + b11) != 0 else np.nan
-        ndvi = (b8 - b4) / (b8 + b4) if (b8 + b4) != 0 else np.nan
-        ndmi = (b8 - b11) / (b8 + b11) if (b8 + b11) != 0 else np.nan
-        ndsi_green_swir2 = (b3 - b12) / (b3 + b12) if (b3 + b12) != 0 else np.nan
-        br_nir_swir2 = b8 / b12 if b12 != 0 else np.nan
-        bi = np.sqrt(b3 ** 2 + b4 ** 2)
-
-    t = thresholds
-
-    # ── Cascade (must match run_inference_v5.py exactly) ──────────────
-    cond_water = (
-        scl in (3, 8, 9, 10)
-        or (np.isfinite(mndwi) and mndwi > 0)
-        or not np.isfinite(mndwi)
-    )
-    cond_topo = (
-        not cond_water
-        and np.isfinite(slope)
-        and slope > 5.0
-    )
-    cond_veg = (
-        not cond_water and not cond_topo
-        and np.isfinite(ndvi) and ndvi > 0.08
-    )
-    cond_shadow = (
-        not cond_water and not cond_topo and not cond_veg
-        and np.isfinite(bi) and bi < 0.15
-    )
-    cond_dead = (
-        not cond_water and not cond_topo and not cond_veg and not cond_shadow
-        and np.isfinite(ndmi) and np.isfinite(br_nir_swir2)
-        and ndmi > t["NDMI_P85"]
-        and br_nir_swir2 > t["BR_NIR_SWIR2_P85"]
-    )
-    cond_risk = (
-        not cond_water and not cond_topo and not cond_veg and not cond_shadow
-        and not cond_dead
-        and np.isfinite(ndsi_green_swir2) and np.isfinite(ndmi)
-        and ndsi_green_swir2 > t["NDSI_Green_SWIR2_P85"]
-        and ndmi < t["NDMI_P15"]
-    )
-    # Anything left = OPTIMAL
-
-    # Determine expected class from cascade priority
-    if cond_water:
-        expected = 0
-    elif cond_topo:
-        expected = 5
-    elif cond_veg:
-        expected = 10
-    elif cond_shadow:
-        expected = 0  # shadow → WATER_NODATA
-    elif cond_dead:
-        expected = 4
-    elif cond_risk:
-        expected = 3
-    else:
-        expected = 1
+    indices = compute_indices(b3, b4, b8, b11, b12)
+    scalar_indices = {key: float(np.asarray(val).reshape(-1)[0]) for key, val in indices.items()}
+    expected = classify_pixel(scl, slope, scalar_indices, thresholds)
 
     if int(map_class) != expected:
         raise AssertionError(
@@ -161,8 +103,12 @@ def _recompute_and_verify(
             f"    Re-computed expected: {expected} ({CLASS_NAMES.get(expected, '?')})\n"
             f"    Raw values: B3={b3*10000:.0f} B4={b4*10000:.0f} B8={b8*10000:.0f} "
             f"B11={b11*10000:.0f} B12={b12*10000:.0f} SCL={scl} Slope={slope:.1f}\n"
-            f"    Indices: NDMI={ndmi:.4f} NDSI={ndsi_green_swir2:.4f} "
-            f"BR={br_nir_swir2:.4f} NDVI={ndvi:.4f} MNDWI={mndwi:.4f} BI={bi:.4f}"
+            f"    Indices: NDMI={scalar_indices['ndmi']:.4f} "
+            f"NDSI={scalar_indices['ndsi_green_swir2']:.4f} "
+            f"BR={scalar_indices['br_nir_swir2']:.4f} "
+            f"NDVI={scalar_indices['ndvi']:.4f} "
+            f"NDWI_NIR={scalar_indices['ndwi_nir']:.4f} "
+            f"BI={scalar_indices['bi']:.4f}"
         )
 
 
@@ -176,7 +122,7 @@ def main() -> None:
     rng = np.random.default_rng(RANDOM_SEED)
 
     # Validate all inputs exist
-    log.info("V5.0 FORENSIC AUDIT — Reverse-Engineering Cascade Verification")
+    log.info("V5.1 FORENSIC AUDIT — Reverse-Engineering Cascade Verification")
     log.info("=" * 60)
 
     for key, p in BAND_PATHS.items():

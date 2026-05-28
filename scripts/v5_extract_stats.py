@@ -2,7 +2,7 @@
 v5_extract_stats.py — Pre-compute zone statistics and operational GeoJSON.
 
 Decimates the filtered suitability map 10x (100 m resolution, 1 px = 1 ha),
-labels connected optimal zones, filters by >= 10 ha, and exports:
+labels connected candidate zones, filters by >= 10 ha, and exports:
   - outputs/data/v5_stats.json
   - outputs/data/operational_zones_v5.geojson
 """
@@ -29,17 +29,26 @@ BASE = Path(__file__).resolve().parent.parent
 DATA = BASE / "outputs" / "data"
 DATA.mkdir(parents=True, exist_ok=True)
 
+RAW_TIF_PATH = DATA / "suitability_map_v5.tif"
 TIF_PATH = DATA / "suitability_map_v5_filtered.tif"
 STATS_PATH = DATA / "v5_stats.json"
 GEOJSON_PATH = DATA / "operational_zones_v5.geojson"
 
 t0 = time.time()
 print("=" * 56)
-print("  V5.0 EXTRACT STATS — Pre-compute zone statistics")
+print("  V5.1 EXTRACT STATS — Pre-compute candidate-zone statistics")
 print("=" * 56, flush=True)
 
 # ── 1. Read with 10x decimation (100 m / pixel) ──────────────────────
 print("\n[1/4] Reading TIF with 10x decimation ...", end=" ", flush=True)
+if not TIF_PATH.exists():
+    raise FileNotFoundError(
+        f"Missing {TIF_PATH}. Run `python scripts/v5_finalize_viz.py` after inference first."
+    )
+if RAW_TIF_PATH.exists() and TIF_PATH.stat().st_mtime < RAW_TIF_PATH.stat().st_mtime:
+    raise RuntimeError(
+        f"{TIF_PATH.name} is older than {RAW_TIF_PATH.name}. Run `python scripts/v5_finalize_viz.py` first."
+    )
 with rasterio.open(TIF_PATH) as src:
     h, w = src.height, src.width
     dh, dw = h // 10, w // 10
@@ -50,7 +59,7 @@ with rasterio.open(TIF_PATH) as src:
     src_crs = src.crs
 print(f"done ({arr.shape[1]}x{arr.shape[0]}, ~{arr.size / 1e6:.1f}M px)")
 
-# ── 2. Label connected optimal zones ──────────────────────────────────
+# ── 2. Label connected candidate zones ────────────────────────────────
 print("[2/4] Labeling connected zones ...", end=" ", flush=True)
 opt_mask = (arr == 1).astype(np.int8)
 labeled, n_labels = label(opt_mask, structure=np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]]))
@@ -67,19 +76,28 @@ n_clusters = int(len(large_indices))
 top10_px = sorted(large_sizes_px, reverse=True)[:10]
 top10_ha = [int(x) for x in top10_px]
 top10_km2 = sum(top10_px) / 100
-area_ha = int(zone_sizes.sum())
-area_km2 = area_ha / 100
+candidate_100m_area_ha = int(zone_sizes.sum())
+candidate_100m_area_km2 = candidate_100m_area_ha / 100
+operational_area_ha = int(large_sizes_px.sum()) if n_clusters else 0
+operational_area_km2 = operational_area_ha / 100
+small_zone_area_ha = candidate_100m_area_ha - operational_area_ha
 
 # Build histogram bins
-bins_def = [(10, 100), (100, 1000), (1000, 5000), (5000, int(large_sizes_px.max()) + 1)]
+max_large_size = int(large_sizes_px.max()) if n_clusters else 5000
+bins_def = [(10, 100), (100, 1000), (1000, 5000), (5000, max_large_size + 1)]
 hist_labels = ["10-100", "100-1000", "1000-5000", ">5000"]
 hist_counts = []
 for lo, hi in bins_def:
     hist_counts.append(int(((large_sizes_px >= lo) & (large_sizes_px < hi)).sum()))
 
 stats = {
-    "area_ha": area_ha,
-    "area_km2": round(area_km2, 1),
+    "area_ha": candidate_100m_area_ha,
+    "area_km2": round(candidate_100m_area_km2, 1),
+    "candidate_100m_area_ha": candidate_100m_area_ha,
+    "candidate_100m_area_km2": round(candidate_100m_area_km2, 1),
+    "operational_area_ha": operational_area_ha,
+    "operational_area_km2": round(operational_area_km2, 1),
+    "small_zone_area_ha": small_zone_area_ha,
     "clusters": n_clusters,
     "top10_ha": top10_ha,
     "top10_km2": round(top10_km2, 1),
@@ -108,7 +126,8 @@ for s, label_val in shapes(labeled, mask=keep_mask, transform=transform):
         "type": "Feature",
         "properties": {
             "class": 1,
-            "zone": "Optimal",
+            "zone": "Кандидатные зоны",
+            "zone_en": "Candidate suitable",
             "area_ha": round(float(px_count), 1),
         },
         "geometry": shp_mapping(geom_simple),
@@ -118,6 +137,8 @@ with open(GEOJSON_PATH, "w") as f:
     json.dump({"type": "FeatureCollection", "features": op_features}, f, indent=2)
 
 print(f"    Zones >= 10 ha: {n_clusters:,}")
+print(f"    Candidate area, 100 m grid: {candidate_100m_area_ha:,.0f} ha")
+print(f"    Operational area >= 10 ha: {operational_area_ha:,.0f} ha")
 print(f"    GeoJSON: {GEOJSON_PATH.name} ({len(op_features):,} polygons, "
       f"{GEOJSON_PATH.stat().st_size / 1e6:.1f} MB)")
 

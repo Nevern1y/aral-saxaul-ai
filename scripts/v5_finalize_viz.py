@@ -1,5 +1,5 @@
 """
-v5_finalize_viz.py — Morphological clean-up, reproject to EPSG:4326, premium palette.
+v5_finalize_viz.py — categorical clean-up, reproject to EPSG:4326, premium palette.
 
 Renders a PNG at ~1200 px wide in EPSG:4326 pixel space via rasterio.warp.reproject,
 then overlays it on a Folium map via ImageOverlay. Zero projection shift.
@@ -15,13 +15,12 @@ from pathlib import Path
 import folium
 import numpy as np
 from PIL import Image
-from rasterio.features import sieve, shapes
+from rasterio.windows import Window
 from rasterio.warp import calculate_default_transform, reproject, Resampling
-from shapely.geometry import mapping, shape
-from shapely.ops import transform as shapely_transform
-from pyproj import Transformer
 import rasterio
-from scipy.ndimage import median_filter
+from scipy.ndimage import convolve
+
+from v5_rules import CLASS_NAMES
 
 warnings.filterwarnings("ignore")
 
@@ -35,63 +34,124 @@ FILTERED_MAP = DATA / "suitability_map_v5_filtered.tif"
 GEOJSON_PATH = DATA / "optimal_zones_v5.geojson"
 HTML_PATH = REPORTS / "suitability_map_v5.html"
 
+CLASSES = sorted(CLASS_NAMES)
+MAJORITY_KERNEL = np.ones((3, 3), dtype=np.uint8)
+
 PALETTE = {
     0:  "#E2E8F0",   # WATER_NODATA
-    1:  "#065F46",   # OPTIMAL
+    1:  "#065F46",   # CANDIDATE SUITABLE
     3:  "#FDE68A",   # RISK_DRY_SALT
     4:  "#991B1B",   # DEAD_WET_TOXIC
     5:  "#1F2937",   # OBSTACLE_TOPO
     10: "#A7F3D0",   # VEGETATION
 }
-CLASS_NAMES = {0: "Water / NoData", 1: "Optimal", 3: "Dry Salt Crust",
-               4: "Dead / Capillary Brine", 5: "Terrain Obstacle", 10: "Vegetation"}
-
+DISPLAY_NAMES_RU = {
+    0: "Вода / тень / нет данных",
+    1: "Кандидатные зоны",
+    3: "Риск сухой соли",
+    4: "Риск влажной рапы",
+    5: "Сложный рельеф",
+    10: "Есть растительность",
+}
 t0 = time.time()
 print("=" * 56)
-print("  V5.0 FINALIZE — Morphological Filter + Premium Viz")
+print("  V5.1 FINALIZE — Categorical Filter + Screening Viz")
 print("=" * 56, flush=True)
 
-# ── 1. Median filter ───────────────────────────────────────────────────
-print("\n[1/4] Median filter (3x3) ...", end=" ", flush=True)
-with rasterio.open(RAW_MAP) as src:
-    profile = src.profile
-    src_crs = src.crs
-    raw = src.read(1)
 
-filtered = median_filter(raw, size=3).astype(np.uint8)
-with rasterio.open(FILTERED_MAP, "w", **profile) as dst:
-    dst.write(filtered, 1)
+def majority_filter_block(padded: np.ndarray) -> np.ndarray:
+    """3x3 categorical majority filter; ties keep the original center class."""
+    center = padded[1:-1, 1:-1]
+    center_count = np.zeros(center.shape, dtype=np.uint8)
+    counts_by_class: list[tuple[int, np.ndarray]] = []
+
+    for cls in CLASSES:
+        counts = convolve(
+            (padded == cls).astype(np.uint8),
+            MAJORITY_KERNEL,
+            mode="constant",
+            cval=0,
+        )[1:-1, 1:-1]
+        counts_by_class.append((cls, counts))
+        center_count[center == cls] = counts[center == cls]
+
+    out = center.copy()
+    best_count = center_count.copy()
+    for cls, counts in counts_by_class:
+        update = counts > best_count
+        out[update] = cls
+        best_count[update] = counts[update]
+    return out.astype(np.uint8)
+
+
+def write_majority_filtered_raster() -> tuple[dict[int, int], int]:
+    class_counts = {cls: 0 for cls in CLASSES}
+    total_px = 0
+    block_rows = 512
+
+    with rasterio.open(RAW_MAP) as src:
+        profile = src.profile.copy()
+        profile.update(dtype="uint8", count=1, nodata=None, compress="lzw")
+
+        with rasterio.open(FILTERED_MAP, "w", **profile) as dst:
+            n_blocks = (src.height + block_rows - 1) // block_rows
+            for block_idx, row0 in enumerate(range(0, src.height, block_rows), start=1):
+                nrows = min(block_rows, src.height - row0)
+                read_row0 = max(0, row0 - 1)
+                read_row1 = min(src.height, row0 + nrows + 1)
+                data = src.read(
+                    1,
+                    window=Window(0, read_row0, src.width, read_row1 - read_row0),
+                )
+
+                top_pad = 1 if row0 == 0 else 0
+                bottom_pad = 1 if row0 + nrows >= src.height else 0
+                padded = np.pad(data, ((top_pad, bottom_pad), (1, 1)), mode="edge")
+                filtered_block = majority_filter_block(padded)
+
+                dst.write(filtered_block, 1, window=Window(0, row0, src.width, nrows))
+                total_px += int(filtered_block.size)
+                for cls in CLASSES:
+                    class_counts[cls] += int((filtered_block == cls).sum())
+
+                if block_idx == 1 or block_idx == n_blocks or block_idx % 10 == 0:
+                    print(f"{block_idx}/{n_blocks}", end=" ", flush=True)
+
+    return class_counts, total_px
+
+# ── 1. Categorical majority filter ─────────────────────────────────────
+print("\n[1/4] Majority filter (3x3 categorical) ...", end=" ", flush=True)
+class_counts, total_px = write_majority_filtered_raster()
 print(f"done -> {FILTERED_MAP.name}")
 
 # ── 2. Class distribution ──────────────────────────────────────────────
 print("\n[2/4] Class distribution (after filter):")
 for cls, name in sorted(CLASS_NAMES.items()):
-    cnt = int((filtered == cls).sum())
-    pct = cnt / filtered.size * 100
+    cnt = class_counts.get(cls, 0)
+    pct = cnt / total_px * 100 if total_px else 0.0
     print(f"    {cls} ({name:<24}) {cnt:>12,}  ({pct:6.2f}%)", flush=True)
 
-# ── 3. Vectorize Optimal zones only (for app.py compatibility) ─────────
-print("\n[3/4] Vectorizing Optimal zones -> GeoJSON ...", end=" ", flush=True)
-transformer = Transformer.from_crs("EPSG:32641", "EPSG:4326", always_xy=True)
-mask = (filtered == 1).astype(np.uint8)
-sieved = sieve(mask, size=5, connectivity=4)
-opt_features = []
-for s, v in shapes(sieved, mask=sieved, transform=profile["transform"]):
-    geom = shape(s)
-    geom_wgs84 = shapely_transform(transformer.transform, geom)
-    opt_features.append({
-        "type": "Feature",
-        "properties": {"class": 1, "zone": "Optimal", "area_px": int(v)},
-        "geometry": mapping(geom_wgs84),
-    })
-with open(GEOJSON_PATH, "w") as f:
-    json.dump({"type": "FeatureCollection", "features": opt_features}, f, indent=2)
-print(f"{len(opt_features):,} polygons -> {GEOJSON_PATH.name}")
+# ── 3. Write lightweight vector note ───────────────────────────────────
+print("\n[3/4] Writing vector export note -> GeoJSON ...", end=" ", flush=True)
+vector_note = {
+    "type": "FeatureCollection",
+    "features": [],
+    "metadata": {
+        "status": "moved_to_operational_export",
+        "reason": "Full-resolution 10 m candidate vectorization creates a very large file and is not used by the dashboard.",
+        "use_instead": "outputs/data/operational_zones_v5.geojson generated by scripts/v5_extract_stats.py",
+        "source_raster": str(FILTERED_MAP),
+    },
+}
+with open(GEOJSON_PATH, "w", encoding="utf-8") as f:
+    json.dump(vector_note, f, ensure_ascii=False, indent=2)
+print(f"done -> {GEOJSON_PATH.name}")
 
 # ── 4. Reproject filtered raster to EPSG:4326 + generate PNG + Folium ─
 print("\n[4/4] Reprojecting to EPSG:4326 and generating Folium map ...", flush=True)
 
 with rasterio.open(FILTERED_MAP) as src:
+    src_crs = src.crs
     # Reproject a downsampled version to EPSG:4326
     tgt_res = 0.00015  # ~15 m at Aral latitude — keeps detail but manageable
     tgt_crs = "EPSG:4326"
@@ -154,7 +214,7 @@ folium.raster_layers.ImageOverlay(
     image=str(png_path),
     bounds=img_bounds,
     opacity=0.80,
-    name="Suitability V5.0",
+    name="Карта предварительного отбора V5.1",
 ).add_to(m)
 
 # AOI bounding box (dashed white, faint fill)
@@ -175,10 +235,10 @@ legend_html = """
             background:white; padding:10px 14px; border-radius:8px;
             box-shadow:0 0 10px rgba(0,0,0,0.15); font-size:13px;
             font-family:'Segoe UI',Arial,sans-serif;">
-    <b style="font-size:14px;">Aral Saxaul V5.0</b><br>
+    <b style="font-size:14px;">Aral Saxaul V5.1</b><br>
 """
 for cls in sorted(PALETTE):
-    name = CLASS_NAMES.get(cls, f"Class {cls}")
+    name = DISPLAY_NAMES_RU.get(cls, CLASS_NAMES.get(cls, f"Класс {cls}"))
     hex_c = PALETTE[cls]
     legend_html += (
         f'<span style="display:inline-block;width:12px;height:12px;'
@@ -187,7 +247,7 @@ for cls in sorted(PALETTE):
     )
 legend_html += """
     <hr style="margin:6px 0;">
-    <span style="color:#666;font-size:11px;">3x3 median filter | NDWI + SCL water mask</span>
+    <span style="color:#666;font-size:11px;">Предварительная карта | категориальный фильтр 3x3 | маска воды и теней</span>
 </div>
 """
 m.get_root().html.add_child(folium.Element(legend_html))
@@ -201,6 +261,6 @@ print(f"\n{'=' * 56}")
 print(f"  Total time: {elapsed:.1f}s")
 print(f"  Outputs:")
 print(f"    {FILTERED_MAP.name}")
-print(f"    {GEOJSON_PATH.name}  ({len(opt_features):,} polygons)")
+print(f"    {GEOJSON_PATH.name}  (vector export note)")
 print(f"    {HTML_PATH.name}  (reprojected EPSG:4326)")
 print(f"{'=' * 56}")

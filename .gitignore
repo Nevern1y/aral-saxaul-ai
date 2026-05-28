@@ -15,6 +15,9 @@ build/
 *.out
 *.err
 
+# Local temporary helpers
+scripts/_monitor_tasks.py
+
 # Environment
 .env
 .venv/

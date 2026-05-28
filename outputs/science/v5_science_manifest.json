@@ -1,0 +1,40 @@
+{
+  "version": "V5.1-science",
+  "purpose": "Normalized field/soil/provenance tables for V5 scientific validation.",
+  "coordinate_policy": "dual_source_unresolved",
+  "important_limitation": "Profiles 12-21 are lab-only until coordinates are provided. The 11 mapped points retain both raw AralField coordinates and shifted/ODT-derived coordinates.",
+  "source_files": {
+    "field_sites": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\AralField(Sheet1).csv",
+    "chemistry_salinity_ions": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\Результаты EC,TDS, pH, в.в., гумус(в.в.csv",
+    "humus_co2_ph": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\результаты Арал(Лист2).csv",
+    "texture": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\мехсостав 2020, 2021 по типам(Лист4).csv",
+    "legacy_ground_truth_mapping": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\outputs\\data\\ground_truth_v2.csv"
+  },
+  "outputs": {
+    "field_sites": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\outputs\\science\\field_sites_v5.csv",
+    "soil_layers": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\outputs\\science\\soil_layers_v5.csv",
+    "texture_profiles": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\outputs\\science\\texture_profiles_v5.csv",
+    "site_profile_mapping": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\outputs\\science\\site_profile_mapping_v5.csv",
+    "soil_profile_summary": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\outputs\\science\\soil_profile_summary_v5.csv",
+    "coordinate_candidates": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\outputs\\science\\v5_coordinate_candidates.csv",
+    "coordinate_authority_template": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\outputs\\science\\v5_coordinate_authority_template.csv",
+    "coordinate_adjudication_summary": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\outputs\\science\\v5_coordinate_adjudication_summary.json",
+    "coordinate_adjudication_report": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\outputs\\science\\v5_coordinate_adjudication_report.md"
+  },
+  "row_counts": {
+    "field_sites": 11,
+    "chemistry_layers": 101,
+    "humus_layers": 103,
+    "soil_layers_total": 204,
+    "texture_profiles": 42,
+    "site_profile_mapping": 11,
+    "soil_profile_summary": 21,
+    "coordinate_candidates": 22,
+    "coordinate_authority_template": 11
+  },
+  "coordinate_adjudication_status": "unresolved",
+  "coordinate_authority_template_status_counts": {
+    "unresolved": 11
+  },
+  "coordinate_adjudication_note": "Fill v5_coordinate_authority_template.csv with GPS/ODT evidence before treating any coordinate source as authoritative."
+}

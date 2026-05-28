@@ -1,0 +1,20 @@
+{
+  "version": "V5.1-kazakhstan-boundary",
+  "source": "geoBoundaries gbOpen KAZ ADM0",
+  "source_api": "https://www.geoboundaries.org/api/current/gbOpen/KAZ/ADM0/",
+  "source_geojson": "https://github.com/wmgeolab/geoBoundaries/raw/9469f09/releaseData/gbOpen/KAZ/ADM0/geoBoundaries-KAZ-ADM0.geojson",
+  "boundary_id": "KAZ-ADM0-12445969",
+  "boundary_year": "2017",
+  "boundary_license": "Open Data Commons Open Database License 1.0",
+  "features": 1,
+  "bounds": [
+    46.492161,
+    40.56864760000003,
+    87.31563160000005,
+    55.48040019999998
+  ],
+  "outputs": {
+    "boundary": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\outputs\\logistics\\kazakhstan_boundary.geojson",
+    "raw_boundary": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\outputs\\logistics\\kazakhstan_boundary_raw.geojson"
+  }
+}

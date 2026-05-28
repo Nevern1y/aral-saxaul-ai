@@ -1,0 +1,435 @@
+{
+  "version": "V5.1-uncertainty",
+  "method": "Decimated 200m threshold sensitivity diagnostic.",
+  "coordinate_policy": "dual_source_unresolved",
+  "n_authoritative_point_samples": 0,
+  "decimation_factor": 20,
+  "area_per_sample_ha": 4.0,
+  "percentiles": {
+    "NDMI_P10": -0.15855653584003448,
+    "NDMI_P15": -0.1423841267824173,
+    "NDMI_P20": -0.13039220869541168,
+    "NDMI_P80": -0.05133536830544472,
+    "NDMI_P85": -0.03794582933187485,
+    "NDMI_P90": -0.015224365517497063,
+    "NDSI_Green_SWIR2_P10": -0.3640151917934418,
+    "NDSI_Green_SWIR2_P15": -0.32813549041748047,
+    "NDSI_Green_SWIR2_P20": -0.29103952646255493,
+    "NDSI_Green_SWIR2_P80": -0.09254563599824905,
+    "NDSI_Green_SWIR2_P85": -0.07225746661424637,
+    "NDSI_Green_SWIR2_P90": -0.04377103969454765,
+    "BR_NIR_SWIR2_P10": 0.7805641889572144,
+    "BR_NIR_SWIR2_P15": 0.8054367303848267,
+    "BR_NIR_SWIR2_P20": 0.8260771632194519,
+    "BR_NIR_SWIR2_P80": 1.0485315322875977,
+    "BR_NIR_SWIR2_P85": 1.087296724319458,
+    "BR_NIR_SWIR2_P90": 1.1499148607254028,
+    "valid_sample_count": 744742,
+    "total_sample_count": 2277639
+  },
+  "scenarios": {
+    "risk_conservative_P10_P90": {
+      "NDMI_P15": -0.15855653584003448,
+      "NDMI_P85": -0.015224365517497063,
+      "NDSI_Green_SWIR2_P15": -0.3640151917934418,
+      "NDSI_Green_SWIR2_P85": -0.04377103969454765,
+      "BR_NIR_SWIR2_P15": 0.7805641889572144,
+      "BR_NIR_SWIR2_P85": 1.1499148607254028
+    },
+    "baseline_P15_P85": {
+      "NDMI_P15": -0.13014958798885345,
+      "NDMI_P85": -0.05709220468997955,
+      "NDSI_Green_SWIR2_P15": -0.32272350788116455,
+      "NDSI_Green_SWIR2_P85": -0.08537112176418304,
+      "BR_NIR_SWIR2_P15": 0.8192713260650635,
+      "BR_NIR_SWIR2_P85": 1.0522245168685913
+    },
+    "risk_sensitive_P20_P80": {
+      "NDMI_P15": -0.13039220869541168,
+      "NDMI_P85": -0.05133536830544472,
+      "NDSI_Green_SWIR2_P15": -0.29103952646255493,
+      "NDSI_Green_SWIR2_P85": -0.09254563599824905,
+      "BR_NIR_SWIR2_P15": 0.8260771632194519,
+      "BR_NIR_SWIR2_P85": 1.0485315322875977
+    }
+  },
+  "class_area_by_scenario": {
+    "risk_conservative_P10_P90": [
+      {
+        "class": 0,
+        "class_name": "Water / NoData / Shadow",
+        "sample_count": 1533714,
+        "area_ha_approx": 6134856.0,
+        "area_km2_approx": 61348.6,
+        "pct_of_sample_grid": 67.338
+      },
+      {
+        "class": 1,
+        "class_name": "Candidate suitable",
+        "sample_count": 416837,
+        "area_ha_approx": 1667348.0,
+        "area_km2_approx": 16673.5,
+        "pct_of_sample_grid": 18.301
+      },
+      {
+        "class": 3,
+        "class_name": "Dry salt risk",
+        "sample_count": 1,
+        "area_ha_approx": 4.0,
+        "area_km2_approx": 0.0,
+        "pct_of_sample_grid": 0.0
+      },
+      {
+        "class": 4,
+        "class_name": "Wet brine risk",
+        "sample_count": 39192,
+        "area_ha_approx": 156768.0,
+        "area_km2_approx": 1567.7,
+        "pct_of_sample_grid": 1.721
+      },
+      {
+        "class": 5,
+        "class_name": "Topographic obstacle",
+        "sample_count": 1237,
+        "area_ha_approx": 4948.0,
+        "area_km2_approx": 49.5,
+        "pct_of_sample_grid": 0.054
+      },
+      {
+        "class": 10,
+        "class_name": "Existing vegetation",
+        "sample_count": 286658,
+        "area_ha_approx": 1146632.0,
+        "area_km2_approx": 11466.3,
+        "pct_of_sample_grid": 12.586
+      }
+    ],
+    "baseline_P15_P85": [
+      {
+        "class": 0,
+        "class_name": "Water / NoData / Shadow",
+        "sample_count": 1533714,
+        "area_ha_approx": 6134856.0,
+        "area_km2_approx": 61348.6,
+        "pct_of_sample_grid": 67.338
+      },
+      {
+        "class": 1,
+        "class_name": "Candidate suitable",
+        "sample_count": 372469,
+        "area_ha_approx": 1489876.0,
+        "area_km2_approx": 14898.8,
+        "pct_of_sample_grid": 16.353
+      },
+      {
+        "class": 3,
+        "class_name": "Dry salt risk",
+        "sample_count": 150,
+        "area_ha_approx": 600.0,
+        "area_km2_approx": 6.0,
+        "pct_of_sample_grid": 0.007
+      },
+      {
+        "class": 4,
+        "class_name": "Wet brine risk",
+        "sample_count": 83411,
+        "area_ha_approx": 333644.0,
+        "area_km2_approx": 3336.4,
+        "pct_of_sample_grid": 3.662
+      },
+      {
+        "class": 5,
+        "class_name": "Topographic obstacle",
+        "sample_count": 1237,
+        "area_ha_approx": 4948.0,
+        "area_km2_approx": 49.5,
+        "pct_of_sample_grid": 0.054
+      },
+      {
+        "class": 10,
+        "class_name": "Existing vegetation",
+        "sample_count": 286658,
+        "area_ha_approx": 1146632.0,
+        "area_km2_approx": 11466.3,
+        "pct_of_sample_grid": 12.586
+      }
+    ],
+    "risk_sensitive_P20_P80": [
+      {
+        "class": 0,
+        "class_name": "Water / NoData / Shadow",
+        "sample_count": 1533714,
+        "area_ha_approx": 6134856.0,
+        "area_km2_approx": 61348.6,
+        "pct_of_sample_grid": 67.338
+      },
+      {
+        "class": 1,
+        "class_name": "Candidate suitable",
+        "sample_count": 376946,
+        "area_ha_approx": 1507784.0,
+        "area_km2_approx": 15077.8,
+        "pct_of_sample_grid": 16.55
+      },
+      {
+        "class": 3,
+        "class_name": "Dry salt risk",
+        "sample_count": 217,
+        "area_ha_approx": 868.0,
+        "area_km2_approx": 8.7,
+        "pct_of_sample_grid": 0.01
+      },
+      {
+        "class": 4,
+        "class_name": "Wet brine risk",
+        "sample_count": 78867,
+        "area_ha_approx": 315468.0,
+        "area_km2_approx": 3154.7,
+        "pct_of_sample_grid": 3.463
+      },
+      {
+        "class": 5,
+        "class_name": "Topographic obstacle",
+        "sample_count": 1237,
+        "area_ha_approx": 4948.0,
+        "area_km2_approx": 49.5,
+        "pct_of_sample_grid": 0.054
+      },
+      {
+        "class": 10,
+        "class_name": "Existing vegetation",
+        "sample_count": 286658,
+        "area_ha_approx": 1146632.0,
+        "area_km2_approx": 11466.3,
+        "pct_of_sample_grid": 12.586
+      }
+    ]
+  },
+  "point_stability": [
+    {
+      "S_Point": "S124",
+      "coordinate_source": "raw_aralfield_dd",
+      "stable_across_scenarios": true,
+      "classes": {
+        "risk_conservative_P10_P90": "Existing vegetation",
+        "baseline_P15_P85": "Existing vegetation",
+        "risk_sensitive_P20_P80": "Existing vegetation"
+      }
+    },
+    {
+      "S_Point": "S124",
+      "coordinate_source": "shifted_odt_derived_dd",
+      "stable_across_scenarios": true,
+      "classes": {
+        "risk_conservative_P10_P90": "Water / NoData / Shadow",
+        "baseline_P15_P85": "Water / NoData / Shadow",
+        "risk_sensitive_P20_P80": "Water / NoData / Shadow"
+      }
+    },
+    {
+      "S_Point": "S125",
+      "coordinate_source": "raw_aralfield_dd",
+      "stable_across_scenarios": true,
+      "classes": {
+        "risk_conservative_P10_P90": "Candidate suitable",
+        "baseline_P15_P85": "Candidate suitable",
+        "risk_sensitive_P20_P80": "Candidate suitable"
+      }
+    },
+    {
+      "S_Point": "S125",
+      "coordinate_source": "shifted_odt_derived_dd",
+      "stable_across_scenarios": true,
+      "classes": {
+        "risk_conservative_P10_P90": "Water / NoData / Shadow",
+        "baseline_P15_P85": "Water / NoData / Shadow",
+        "risk_sensitive_P20_P80": "Water / NoData / Shadow"
+      }
+    },
+    {
+      "S_Point": "S126",
+      "coordinate_source": "raw_aralfield_dd",
+      "stable_across_scenarios": true,
+      "classes": {
+        "risk_conservative_P10_P90": "Candidate suitable",
+        "baseline_P15_P85": "Candidate suitable",
+        "risk_sensitive_P20_P80": "Candidate suitable"
+      }
+    },
+    {
+      "S_Point": "S126",
+      "coordinate_source": "shifted_odt_derived_dd",
+      "stable_across_scenarios": true,
+      "classes": {
+        "risk_conservative_P10_P90": "Water / NoData / Shadow",
+        "baseline_P15_P85": "Water / NoData / Shadow",
+        "risk_sensitive_P20_P80": "Water / NoData / Shadow"
+      }
+    },
+    {
+      "S_Point": "S127",
+      "coordinate_source": "raw_aralfield_dd",
+      "stable_across_scenarios": true,
+      "classes": {
+        "risk_conservative_P10_P90": "Existing vegetation",
+        "baseline_P15_P85": "Existing vegetation",
+        "risk_sensitive_P20_P80": "Existing vegetation"
+      }
+    },
+    {
+      "S_Point": "S127",
+      "coordinate_source": "shifted_odt_derived_dd",
+      "stable_across_scenarios": true,
+      "classes": {
+        "risk_conservative_P10_P90": "Water / NoData / Shadow",
+        "baseline_P15_P85": "Water / NoData / Shadow",
+        "risk_sensitive_P20_P80": "Water / NoData / Shadow"
+      }
+    },
+    {
+      "S_Point": "S128",
+      "coordinate_source": "raw_aralfield_dd",
+      "stable_across_scenarios": true,
+      "classes": {
+        "risk_conservative_P10_P90": "Existing vegetation",
+        "baseline_P15_P85": "Existing vegetation",
+        "risk_sensitive_P20_P80": "Existing vegetation"
+      }
+    },
+    {
+      "S_Point": "S128",
+      "coordinate_source": "shifted_odt_derived_dd",
+      "stable_across_scenarios": true,
+      "classes": {
+        "risk_conservative_P10_P90": "Water / NoData / Shadow",
+        "baseline_P15_P85": "Water / NoData / Shadow",
+        "risk_sensitive_P20_P80": "Water / NoData / Shadow"
+      }
+    },
+    {
+      "S_Point": "S129",
+      "coordinate_source": "raw_aralfield_dd",
+      "stable_across_scenarios": true,
+      "classes": {
+        "risk_conservative_P10_P90": "Candidate suitable",
+        "baseline_P15_P85": "Candidate suitable",
+        "risk_sensitive_P20_P80": "Candidate suitable"
+      }
+    },
+    {
+      "S_Point": "S129",
+      "coordinate_source": "shifted_odt_derived_dd",
+      "stable_across_scenarios": true,
+      "classes": {
+        "risk_conservative_P10_P90": "Water / NoData / Shadow",
+        "baseline_P15_P85": "Water / NoData / Shadow",
+        "risk_sensitive_P20_P80": "Water / NoData / Shadow"
+      }
+    },
+    {
+      "S_Point": "S130",
+      "coordinate_source": "raw_aralfield_dd",
+      "stable_across_scenarios": true,
+      "classes": {
+        "risk_conservative_P10_P90": "Candidate suitable",
+        "baseline_P15_P85": "Candidate suitable",
+        "risk_sensitive_P20_P80": "Candidate suitable"
+      }
+    },
+    {
+      "S_Point": "S130",
+      "coordinate_source": "shifted_odt_derived_dd",
+      "stable_across_scenarios": true,
+      "classes": {
+        "risk_conservative_P10_P90": "Water / NoData / Shadow",
+        "baseline_P15_P85": "Water / NoData / Shadow",
+        "risk_sensitive_P20_P80": "Water / NoData / Shadow"
+      }
+    },
+    {
+      "S_Point": "S131",
+      "coordinate_source": "raw_aralfield_dd",
+      "stable_across_scenarios": true,
+      "classes": {
+        "risk_conservative_P10_P90": "Existing vegetation",
+        "baseline_P15_P85": "Existing vegetation",
+        "risk_sensitive_P20_P80": "Existing vegetation"
+      }
+    },
+    {
+      "S_Point": "S131",
+      "coordinate_source": "shifted_odt_derived_dd",
+      "stable_across_scenarios": true,
+      "classes": {
+        "risk_conservative_P10_P90": "Water / NoData / Shadow",
+        "baseline_P15_P85": "Water / NoData / Shadow",
+        "risk_sensitive_P20_P80": "Water / NoData / Shadow"
+      }
+    },
+    {
+      "S_Point": "S132",
+      "coordinate_source": "raw_aralfield_dd",
+      "stable_across_scenarios": true,
+      "classes": {
+        "risk_conservative_P10_P90": "Candidate suitable",
+        "baseline_P15_P85": "Candidate suitable",
+        "risk_sensitive_P20_P80": "Candidate suitable"
+      }
+    },
+    {
+      "S_Point": "S132",
+      "coordinate_source": "shifted_odt_derived_dd",
+      "stable_across_scenarios": true,
+      "classes": {
+        "risk_conservative_P10_P90": "Water / NoData / Shadow",
+        "baseline_P15_P85": "Water / NoData / Shadow",
+        "risk_sensitive_P20_P80": "Water / NoData / Shadow"
+      }
+    },
+    {
+      "S_Point": "S133",
+      "coordinate_source": "raw_aralfield_dd",
+      "stable_across_scenarios": true,
+      "classes": {
+        "risk_conservative_P10_P90": "Water / NoData / Shadow",
+        "baseline_P15_P85": "Water / NoData / Shadow",
+        "risk_sensitive_P20_P80": "Water / NoData / Shadow"
+      }
+    },
+    {
+      "S_Point": "S133",
+      "coordinate_source": "shifted_odt_derived_dd",
+      "stable_across_scenarios": true,
+      "classes": {
+        "risk_conservative_P10_P90": "Water / NoData / Shadow",
+        "baseline_P15_P85": "Water / NoData / Shadow",
+        "risk_sensitive_P20_P80": "Water / NoData / Shadow"
+      }
+    },
+    {
+      "S_Point": "S134",
+      "coordinate_source": "raw_aralfield_dd",
+      "stable_across_scenarios": false,
+      "classes": {
+        "risk_conservative_P10_P90": "No sample",
+        "baseline_P15_P85": "No sample",
+        "risk_sensitive_P20_P80": "No sample"
+      }
+    },
+    {
+      "S_Point": "S134",
+      "coordinate_source": "shifted_odt_derived_dd",
+      "stable_across_scenarios": true,
+      "classes": {
+        "risk_conservative_P10_P90": "Water / NoData / Shadow",
+        "baseline_P15_P85": "Water / NoData / Shadow",
+        "risk_sensitive_P20_P80": "Water / NoData / Shadow"
+      }
+    }
+  ],
+  "limitations": [
+    "Area estimates are approximate because this is a decimated diagnostic grid.",
+    "Candidate suitability remains a screening class, not field-proven planting success.",
+    "Point stability follows the coordinate sources available in v5_point_samples.csv."
+  ]
+}

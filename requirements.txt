@@ -1,3 +1,4 @@
+earthengine-api>=1.5
 folium>=0.19
 geopandas>=1.0
 matplotlib>=3.9
@@ -5,6 +6,7 @@ numpy>=2.0
 pandas>=2.2
 plotly>=5.24
 rasterio>=1.4
+requests>=2.32
 scipy>=1.14
 shapely>=2.0
 streamlit>=1.35

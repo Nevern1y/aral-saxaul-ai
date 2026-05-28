@@ -1,0 +1,12 @@
+S_Point,pit_number,pit_code,raw_lon_aralfield_dd,raw_lat_aralfield_dd,shifted_lon_odt_dd,shifted_lat_odt_dd,coordinate_conflict_m,selected_coordinate_source,authoritative_lon_dd,authoritative_lat_dd,evidence_reference,reviewer,review_date,decision_note,authority_row_status,authority_validation_note
+S124,1,01/20А,60.893604,45.588539,59.775683,44.7045,131715.2,,,,,,,,unresolved,Pending external GPS/ODT authority evidence.
+S125,2,02/20А,60.912059,45.608637,59.793467,44.71105,132864.4,,,,,,,,unresolved,Pending external GPS/ODT authority evidence.
+S126,3,03/20А,60.928608,45.624813,59.813067,44.729433,132504.7,,,,,,,,unresolved,Pending external GPS/ODT authority evidence.
+S127,4,04/20А,60.9836,45.648156,59.863583,44.755567,132478.6,,,,,,,,unresolved,Pending external GPS/ODT authority evidence.
+S128,5,05/20А,60.987777,45.656316,59.8688,44.762467,132522.0,,,,,,,,unresolved,Pending external GPS/ODT authority evidence.
+S129,6,06/20А,61.018802,45.657462,59.89225,44.763633,132912.3,,,,,,,,unresolved,Pending external GPS/ODT authority evidence.
+S130,7,07/20А,61.213133,45.725247,60.065867,44.820933,134796.2,,,,,,,,unresolved,Pending external GPS/ODT authority evidence.
+S131,8,08/20А,61.221228,45.754821,60.097676,44.860309,132713.8,,,,,,,,unresolved,Pending external GPS/ODT authority evidence.
+S132,9,09/20А,61.257944,45.815325,60.134392,44.920813,132651.6,,,,,,,,unresolved,Pending external GPS/ODT authority evidence.
+S133,10,10/20А,61.267256,45.847397,60.143704,44.952885,132618.7,,,,,,,,unresolved,Pending external GPS/ODT authority evidence.
+S134,11,11/20А,61.268779,45.945191,60.145227,45.050679,132518.2,,,,,,,,unresolved,Pending external GPS/ODT authority evidence.

@@ -1,0 +1,79 @@
+{
+  "version": "V5.1-coordinate-adjudication",
+  "coordinate_policy": "adjudication_required_dual_source_unresolved",
+  "decision_status": "unresolved",
+  "n_field_sites": 11,
+  "n_coordinate_candidates": 22,
+  "n_profiles_with_coordinate_candidates": 11,
+  "n_lab_only_profiles_without_coordinates": 10,
+  "authority_template_rows": 11,
+  "authority_template_status_counts": {
+    "unresolved": 11
+  },
+  "authority_template_resolved_rows": 0,
+  "authority_template_invalid_rows": 0,
+  "authority_template_incomplete_rows": 0,
+  "authority_template_unresolved_rows": 11,
+  "coordinate_conflict_median": 132618.7,
+  "coordinate_conflict_min": 131715.2,
+  "coordinate_conflict_max": 134796.2,
+  "source_diagnostics": [
+    {
+      "coordinate_source": "raw_aralfield_dd",
+      "total_points": 11,
+      "water_nodata_shadow_points": 2,
+      "non_water_sampled_points": 9,
+      "candidate_suitable_points": 5,
+      "existing_vegetation_points": 4,
+      "water_nodata_shadow_share_pct": 18.2,
+      "diagnostic_interpretation": "Mixed sampled classes; usable for pilot diagnostics but still not authoritative."
+    },
+    {
+      "coordinate_source": "shifted_odt_derived_dd",
+      "total_points": 11,
+      "water_nodata_shadow_points": 11,
+      "non_water_sampled_points": 0,
+      "candidate_suitable_points": 0,
+      "existing_vegetation_points": 0,
+      "water_nodata_shadow_share_pct": 100.0,
+      "diagnostic_interpretation": "All sampled points fall in water/nodata/shadow; this source is suspect but not rejected without ODT/GPS authority."
+    }
+  ],
+  "class_distribution_by_coordinate_source": [
+    {
+      "coordinate_source": "raw_aralfield_dd",
+      "class_filtered_name": "Candidate suitable",
+      "count": 5
+    },
+    {
+      "coordinate_source": "raw_aralfield_dd",
+      "class_filtered_name": "Existing vegetation",
+      "count": 4
+    },
+    {
+      "coordinate_source": "raw_aralfield_dd",
+      "class_filtered_name": "Water / NoData / Shadow",
+      "count": 2
+    },
+    {
+      "coordinate_source": "shifted_odt_derived_dd",
+      "class_filtered_name": "Water / NoData / Shadow",
+      "count": 11
+    }
+  ],
+  "decision_rule": {
+    "current_position": "No coordinate source is authoritative until external GPS/ODT/photo evidence is recorded.",
+    "do_not_do": "Do not merge raw and shifted validation samples, and do not use spectral class alone as coordinate proof.",
+    "minimum_evidence_needed": [
+      "Original GPS/ODT export or field notebook for S124-S134.",
+      "Reviewer decision for each S_Point in v5_coordinate_authority_template.csv.",
+      "Coordinates for lab-only profiles 12/20A-21/20A before spatial validation uses those profiles."
+    ]
+  },
+  "outputs": {
+    "coordinate_candidates": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\outputs\\science\\v5_coordinate_candidates.csv",
+    "authority_template": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\outputs\\science\\v5_coordinate_authority_template.csv",
+    "summary_json": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\outputs\\science\\v5_coordinate_adjudication_summary.json",
+    "report_md": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\outputs\\science\\v5_coordinate_adjudication_report.md"
+  }
+}
