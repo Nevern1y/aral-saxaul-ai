@@ -99,6 +99,17 @@ def load_v5_class_pixels():
         total_px = arr.size
         for cls_val in [0, 1, 3, 4, 5, 10]:
             pixels[cls_val] = int((arr == cls_val).sum())
+    else:
+        stats_path = BASE_DIR / "outputs" / "data" / "v5_stats.json"
+        if stats_path.exists():
+            with open(stats_path, "r", encoding="utf-8") as f:
+                stats = json.load(f)
+            pixels = {
+                int(cls_val): int(count)
+                for cls_val, count in stats.get("class_pixels_10m", {}).items()
+            }
+            total_px = int(stats.get("class_total_pixels_10m", 0))
+            pixel_area_ha = float(stats.get("pixel_area_ha_10m", pixel_area_ha))
     return pixels, total_px, pixel_area_ha
 
 

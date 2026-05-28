@@ -206,8 +206,21 @@ check(FILTERED_RASTER_PATH.stat().st_mtime >= RASTER_PATH.stat().st_mtime, "  fi
 
 with open(STATS_PATH, encoding="utf-8") as f:
     stats = json.load(f)
-required_stats = {"area_ha", "candidate_100m_area_ha", "operational_area_ha", "clusters", "top10_ha"}
+required_stats = {
+    "area_ha",
+    "candidate_10m_area_ha",
+    "class_pixels_10m",
+    "class_total_pixels_10m",
+    "pixel_area_ha_10m",
+    "candidate_100m_area_ha",
+    "operational_area_ha",
+    "clusters",
+    "top10_ha",
+}
 check(required_stats.issubset(stats), "  stats has required keys", f"missing: {required_stats - set(stats)}")
+class_pixels_10m = {int(cls): int(count) for cls, count in stats.get("class_pixels_10m", {}).items()}
+check(sum(class_pixels_10m.values()) == stats.get("class_total_pixels_10m"), "  10m class pixel counts sum to total")
+check(class_pixels_10m.get(1, 0) > 0, "  stats fallback has candidate pixels")
 check(stats.get("candidate_100m_area_ha", 0) >= stats.get("operational_area_ha", 0), "  candidate area >= operational area")
 check(stats.get("clusters", 0) > 0, "  operational clusters > 0", f"= {stats.get('clusters', 0):,}")
 

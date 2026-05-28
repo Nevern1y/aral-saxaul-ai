@@ -23,6 +23,8 @@ from shapely.geometry import mapping as shp_mapping, shape as shp_shape
 from shapely.ops import transform as shp_transform
 from pyproj import Transformer
 
+from v5_rules import CLASS_NAMES
+
 warnings.filterwarnings("ignore")
 
 BASE = Path(__file__).resolve().parent.parent
@@ -39,6 +41,19 @@ print("=" * 56)
 print("  V5.1 EXTRACT STATS — Pre-compute candidate-zone statistics")
 print("=" * 56, flush=True)
 
+
+def count_10m_classes(path: Path) -> tuple[dict[str, int], int, float]:
+    class_counts = {str(cls): 0 for cls in sorted(CLASS_NAMES)}
+    total_px = 0
+    with rasterio.open(path) as src:
+        pixel_area_ha = abs(src.res[0] * src.res[1]) / 10000.0
+        for _, window in src.block_windows(1):
+            block = src.read(1, window=window)
+            total_px += int(block.size)
+            for cls in CLASS_NAMES:
+                class_counts[str(cls)] += int((block == cls).sum())
+    return class_counts, total_px, pixel_area_ha
+
 # ── 1. Read with 10x decimation (100 m / pixel) ──────────────────────
 print("\n[1/4] Reading TIF with 10x decimation ...", end=" ", flush=True)
 if not TIF_PATH.exists():
@@ -49,6 +64,8 @@ if RAW_TIF_PATH.exists() and TIF_PATH.stat().st_mtime < RAW_TIF_PATH.stat().st_m
     raise RuntimeError(
         f"{TIF_PATH.name} is older than {RAW_TIF_PATH.name}. Run `python scripts/v5_finalize_viz.py` first."
     )
+class_pixels_10m, class_total_pixels_10m, pixel_area_ha_10m = count_10m_classes(TIF_PATH)
+candidate_10m_area_ha = class_pixels_10m.get("1", 0) * pixel_area_ha_10m
 with rasterio.open(TIF_PATH) as src:
     h, w = src.height, src.width
     dh, dw = h // 10, w // 10
@@ -93,6 +110,11 @@ for lo, hi in bins_def:
 stats = {
     "area_ha": candidate_100m_area_ha,
     "area_km2": round(candidate_100m_area_km2, 1),
+    "candidate_10m_area_ha": round(candidate_10m_area_ha, 1),
+    "candidate_10m_area_km2": round(candidate_10m_area_ha / 100.0, 1),
+    "class_pixels_10m": class_pixels_10m,
+    "class_total_pixels_10m": class_total_pixels_10m,
+    "pixel_area_ha_10m": pixel_area_ha_10m,
     "candidate_100m_area_ha": candidate_100m_area_ha,
     "candidate_100m_area_km2": round(candidate_100m_area_km2, 1),
     "operational_area_ha": operational_area_ha,

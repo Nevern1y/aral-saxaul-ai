@@ -1,6 +1,18 @@
 {
   "area_ha": 1598800,
   "area_km2": 15988.0,
+  "candidate_10m_area_ha": 1594114.9,
+  "candidate_10m_area_km2": 15941.1,
+  "class_pixels_10m": {
+    "0": 614091651,
+    "1": 159411486,
+    "3": 565,
+    "4": 22655785,
+    "5": 587747,
+    "10": 114860704
+  },
+  "class_total_pixels_10m": 911607938,
+  "pixel_area_ha_10m": 0.01,
   "candidate_100m_area_ha": 1598800,
   "candidate_100m_area_km2": 15988.0,
   "operational_area_ha": 1564250,
