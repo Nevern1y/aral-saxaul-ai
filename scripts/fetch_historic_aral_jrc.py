@@ -7,7 +7,7 @@ Col: floor((lon+180) / (360/14)), Row: floor((lat+90) / (180/36))
 Output: outputs/aoi/aral_sea_1960.geojson with JRC max_extent coastline.
 Auto-runs full V4 pipeline after download.
 """
-import sys, json, os, time, urllib.request, ssl, shutil, numpy as np
+import sys, json, time, urllib.request, ssl, shutil, numpy as np
 from pathlib import Path
 sys.stdout.reconfigure(encoding='utf-8')
 
@@ -153,21 +153,7 @@ for tif in downloaded:
     tif.unlink()
 log(f"  Temp files cleaned ({time.time()-t0:.1f}s)")
 
-# Run pipeline
-log("\n" + "="*60)
-log("Step 2: Running V4 pipeline...")
-log("="*60)
-for script, desc in [
-    ("build_aoi_mask.py", "AOI mask"),
-    ("run_inference_v4.py", "Inference"),
-    ("phase5_v4_export.py", "Export"),
-]:
-    log(f"\n--- {desc} ---")
-    ret = os.system(f'python "{BASE / "scripts" / script}"')
-    if ret != 0:
-        log(f"  ERROR: exit code {ret}")
-        sys.exit(1)
-
 log(f"\n{'='*60}")
-log(f"  ALL DONE. Total: {time.time()-t0:.1f}s")
+log(f"  AOI saved. Total: {time.time()-t0:.1f}s")
+log("  Next (V5.1): python scripts/fetch_gee_raw_v5.py && python scripts/run_inference_v5.py")
 log(f"{'='*60}")

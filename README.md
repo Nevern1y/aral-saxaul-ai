@@ -48,7 +48,8 @@ V5.1 сохраняет V5 rule-based pipeline на нативном разре�
 
 | Скрипт | Назначение |
 |---|---|
-| `scripts/fetch_gee_raw_v5.py` | Загрузка 10-метровых каналов Sentinel-2 L2A (B3, B4, B8, B11, B12, SCL, DEM) через GEE |
+| `scripts/fetch_gee_raw_v5.py` | Загрузка каналов Sentinel-2 L2A (B3, B4, B8 — 10 м; B11, B12 — 20 м; SCL) через GEE |
+| `scripts/prepare_slope_data.py` | Загрузка SRTM, расчет slope/elevation 30 м (`dem_slope_30m.tif`) — обязательный вход для классификации |
 | `scripts/run_inference_v5.py` | Применение правил классификации (NDMI, NDSI, BR, Slope, NDVI) → растровая маска 10 м |
 | `scripts/v5_finalize_viz.py` | Категориальный фильтр 3x3, filtered raster и Folium-карта (`suitability_map_v5.html`) |
 | `scripts/v5_extract_stats.py` | Статистика по filtered raster и рабочий GeoJSON (`v5_stats.json`, `operational_zones_v5.geojson`) |
@@ -117,8 +118,11 @@ streamlit run app.py
 ### Полный пайплайн V5.1 (локально)
 
 ```bash
-# 1. Загрузка данных (требуется GEE)
+# 1. Загрузка спектральных каналов S2 (требуется GEE)
 python scripts/fetch_gee_raw_v5.py
+
+# 1b. Загрузка рельефа SRTM → dem_slope_30m.tif (обязательный вход)
+python scripts/prepare_slope_data.py
 
 # 2. Инференс (правила классификации)
 python scripts/run_inference_v5.py

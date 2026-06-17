@@ -8,10 +8,9 @@ which approximates the pre-crisis Aral Sea coastline (~55-60k km²).
 2. Clip to BBOX (57.5, 43.3, 62.0, 46.7)
 3. Download binary mask as GeoTIFF via getDownloadURL
 4. Polygonize locally with rasterio
-5. Save to outputs/aoi/aral_sea_1960.geojson
-6. Auto-run build_aoi_mask -> inference -> export
+5. Save to outputs/aoi/aral_sea_1960.geojson (consumed by app.py and fetch_gee_raw_v5.py)
 """
-import sys, json, os, time, subprocess, urllib.request, ssl, shutil, numpy as np
+import sys, json, time, urllib.request, ssl, shutil, numpy as np
 from pathlib import Path
 sys.stdout.reconfigure(encoding='utf-8')
 
@@ -191,25 +190,7 @@ if tif_path.exists():
 elapsed = time.time() - t0
 log(f"\n  GEE fetch complete: {elapsed:.1f}s")
 
-# ── 5. Run pipeline ────────────────────────────────────────────────────
-log("\n" + "=" * 60)
-log("Step 5: Running full V4 pipeline...")
-log("=" * 60)
-
-scripts = [
-    ("build_aoi_mask.py", "AOI mask (with vector clip)"),
-    ("run_inference_v4.py", "V4 inference"),
-    ("phase5_v4_export.py", "Vector export + map"),
-]
-
-for script, desc in scripts:
-    log(f"\n--- {desc} ---")
-    ret = os.system(f'python "{BASE / "scripts" / script}"')
-    if ret != 0:
-        log(f"  ERROR: exit code {ret}")
-        sys.exit(1)
-    log(f"  OK")
-
 log(f"\n{'='*60}")
-log(f"  ALL DONE. Total elapsed: {time.time()-t0:.1f}s")
+log(f"  AOI saved. Total elapsed: {time.time()-t0:.1f}s")
+log("  Next (V5.1): python scripts/fetch_gee_raw_v5.py && python scripts/run_inference_v5.py")
 log(f"{'='*60}")
