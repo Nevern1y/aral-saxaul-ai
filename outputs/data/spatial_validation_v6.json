@@ -1,0 +1,73 @@
+{
+  "version": "V6-spatial-validation",
+  "salinity_model": {
+    "n": 70,
+    "n_saline": 27,
+    "in_sample_auc": 0.767,
+    "loo_auc": 0.682,
+    "loo_auc_ci95": [
+      0.552,
+      0.8
+    ],
+    "bootstrap_used": 2000,
+    "spatial_lbo_pooled_auc": 0.385,
+    "spatial_lbo_perblock_auc": 0.792,
+    "spatial_perblock_k": 3,
+    "pooled_minus_perblock": -0.407,
+    "within_block_sign_positive": "5/5",
+    "n_blocks": 11,
+    "block_km": 20.0,
+    "block_sizes": [
+      10,
+      15,
+      15,
+      7,
+      4,
+      5,
+      8,
+      2,
+      1,
+      1,
+      2
+    ]
+  },
+  "suitability_vs_saxaul_label": {
+    "auc": 0.647,
+    "ci95": [
+      0.435,
+      0.827
+    ],
+    "n": 56,
+    "n_positive": 6
+  },
+  "independent_aralfield": {
+    "auc": 0.5,
+    "n": 11,
+    "n_present": 3,
+    "ci95": [
+      0.111,
+      0.889
+    ],
+    "note": "Independent 2018 field points; tiny n — directional only."
+  },
+  "coef_covariance": [
+    [
+      0.06179852784615309,
+      -0.0002645587922213654
+    ],
+    [
+      -0.00026455879222136584,
+      0.06905268850724801
+    ]
+  ],
+  "scaler": {
+    "mean": -0.07684598116902631,
+    "std": 0.08955967903853645
+  },
+  "beta": [
+    -0.46952459452016604,
+    0.3249473785476439
+  ],
+  "n_bootstrap": 2000,
+  "seed": 12345
+}
