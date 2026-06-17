@@ -24,26 +24,11 @@ Wall-to-wall suitability from the **validated salinity model** (NDMI→P(salts>1
 Mean suitability over bare land: **0.5876**.
 
 ## Ground-truth validation at the 70 measured pits
-Artifacts: `outputs/data/suitability_v6_pit_validation.csv` (per pit),
-`outputs/data/suitability_v6_pit_validation_summary.json`.
-
-- **Coverage parity vs the frozen product:** of the 70 lab pits, the existing 10 m
-  V5.1 map covers **13** as non-water; V6 covers **15**. V6 is therefore *not* narrower
-  than the shipped product — it is marginally broader, and it is the layer the
-  salinity science is actually validated on.
-- **Why only ~15/70 are scored:** **54 of 70 pits lie OUTSIDE the 1960 Aral footprint
-  (the dried-seabed restoration target).** The Pachikin/Kozybaeva 2012–2014 survey
-  sampled the wider Priaralye (watersheds, floodplains, settled areas north/east of the
-  seabed), not just the seabed. Restricting to the AOI is correct for a seabed-planting
-  product; the out-of-AOI pits still train the salinity model (they carry real NDMI↔salt
-  signal) but are not part of the mapped target area.
-- **Zone ↔ measured salinity (scored pits, n=15):** mean measured topsoil salts by zone —
-  candidate/moderate (1/3) ≈ 0.07 %, **strong-salinity (4) ≈ 7.0 %**, vegetation (10) ≈ 1.6 %.
-  Monotonic and correctly ordered.
-- **Zone∈{3,4} as a saline (>1 %) detector:** sensitivity **0.70**, specificity **0.80**
-  (TP=7, FP=1, FN=3, TN=4). Consistent with the model's calibration AUC (0.77) at this n.
-- Confidence: the continuous index and its salinity ordering are **СРЕДНЯЯ–ВЫСОКАЯ**; the
-  absolute zone *areas* inherit the single-axis caveat below and the small validation n.
+Artifacts: `data/canonical/suitability_v6_pit_validation.csv` (per pit), `outputs/data/suitability_v6_pit_validation_summary.json`.
+- **Coverage parity:** the frozen 10 m V5.1 map covers **13** of the 70 lab pits as non-water; V6 covers **15**. V6 is not narrower than the shipped product.
+- **Why ~15/70 are scored:** 54 of 70 pits lie OUTSIDE the 1960 Aral footprint (the Pachikin/Kozybaeva survey sampled the wider Priaralye, not just the seabed); they still train the salinity model but are not in the mapped target area.
+- **Zone ↔ measured salinity** (mean measured topsoil salts per zone, scored pits): moderate (3) ≈ 0.07 %, strong (4) ≈ 7.03 %, vegetation (10) ≈ 1.59 %. Strong-salinity zone (4) is by far the most saline — monotonic and correctly ordered.
+- **Zone∈{3,4} as a saline (>1 %) detector:** sensitivity **0.7**, specificity **0.8** (TP=7, FP=1, FN=3, TN=4).
 
 ## Honesty notes
 - CRS is EPSG:4326 (the 30 m stack's native grid); the frozen 10 m V5.1 map is EPSG:32641. Phase 8 overlays both on the web map (both reproject to web-mercator client-side).

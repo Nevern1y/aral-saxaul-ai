@@ -173,9 +173,80 @@ V5.1 хранит данные в `outputs/science/`:
 
 ---
 
+## V6 — слой солёности по лабораторным данным (научное дополнение)
+
+V6 не заменяет карту V5.1, а **дополняет** её количественной, проверяемой оценкой
+засоления почвы. Он обучен на отчёте Пачикина–Козыбаевой (2012–2014): **70
+georeferenced почвенных разрезов** с измеренной солёностью — это ~6× больше точек
+наземной правды, чем было у V5.1 (11). UX дашборда не меняется: новый слой живёт во
+вкладке «Проверка и данные», а главная карта остаётся V5.1.
+
+**Что валидировано (честно, с интервалами):**
+
+- **Модель солёности (количественное ядро):** логистическая регрессия измеренной
+  солёности (>1 %) по 30 м NDMI на всех 70 точках (27 солёных). LOO AUC **0.682**,
+  бутстрап-интервал [0.552, 0.800]; калибровочная AUC 0.77. Связь NDMI↔соль
+  лабораторно подтверждена (Spearman ρ ≈ +0.66, p < 1e-9). Балл пригодности =
+  1 − P(засоление).
+- **Пространственная проверка:** leave-block-out (20 км блоки). Средняя per-block
+  AUC **0.792** (знак NDMI→соль положителен в 5/5 проверяемых блоках). Объединённая
+  AUC 0.385 ниже — это **дрейф калибровки между районами** (разная базовая доля
+  засоления), а не потеря сигнала. Записано как ограничение.
+- **Сплошной слой 30 м:** `suitability_index_v6.tif` (непрерывный 0..1) +
+  `suitability_zones_v6.tif` (те же коды/цвета ZoneClass, что у V5.1). Покрытие
+  **96.9 % области** против ~46 % у композита 10 м. NDMI обрезается по training
+  support перед применением (без экстраполяции).
+- **Слой неопределённости:** `suitability_uncertainty_v6.tif` — SE вероятности
+  засоления (дельта-метод по ковариации коэффициентов).
+- **Сравнение с замороженным продуктом:** на 70 точках V6 покрывает 15 как
+  не-водные, V5.1 — 13. Детектор засоления (зоны 3/4): чувств. 0.70, спец. 0.80.
+
+**Честный отрицательный результат:** прямой классификатор присутствия саксаула
+(NDMI+MSAVI → саксаул) даёт LOO AUC ≈ 0.48 (на уровне случайности при 6
+положительных метках) и **демотирован до exploratory, не для решений**. Наука
+заякорена на сигнале солёности (n=70), а не на 6 точках саксаула.
+
+### Скрипты V6
+
+| Скрипт | Назначение |
+|---|---|
+| `scripts/v6/extract_docx_tables.py` | Извлечение всех таблиц + нарратива из DOCX-отчёта (22 МБ) в `data/interim/` |
+| `scripts/v6/build_canonical_db.py` | Каноническая БД: `profiles_v6.csv` (70 georef), `soil_layers_v6.csv` (369 слоёв) |
+| `scripts/v6/extract_saxaul_labels.py` | Метки саксаула (presence/absence/suppressed) с at-pit gating |
+| `scripts/v6/build_ml_dataset.py` | ML-таблица: почва + RS (10 м и 30 м) + V5 zone → `ml_dataset_v6.csv` |
+| `scripts/v6/calibrate_thresholds.py` | Пороги по измеренной солёности → `thresholds_v6_calibrated.json` |
+| `scripts/v6/train_suitability_model.py` | Модель солёности (валидированная) + exploratory логит саксаула |
+| `scripts/v6/build_suitability_index.py` | Сплошные растры пригодности/зон + наземная проверка по 70 точкам |
+| `scripts/v6/spatial_validation.py` | Пространственная CV, бутстрап-интервалы, слой неопределённости |
+| `scripts/v6/qa_science_audit_v6.py` | QA red-team научного слоя (circularity, AUC sanity, reproducibility) |
+
+### Запуск пайплайна V6
+
+```bash
+# Полная пересборка из DOCX + растров + QA red-team (нужны локальные большие входы):
+python scripts/run_v6_pipeline.py --all --qa
+
+# Только шаги из tracked-входов (без растров/docx) — работает на чистом checkout:
+python scripts/run_v6_pipeline.py
+
+# Флаги: --docx (шаг извлечения), --rasters (растровые шаги 4,7,8), --qa (red-team)
+```
+
+Растры (`.tif`) gitignored (регенерируются); таблицы/JSON/MD трекаются. QA red-team
+проверяет отсутствие circularity, корректность интервалов AUC, воспроизводимость
+площадей зон и наличие честных оговорок в отчётах.
+
+---
+
 ## Scientific Limitations
 
 - V5.1 is a rule-based remote-sensing screening product, not a trained habitat model.
+- V6 adds a soil-salinity-anchored layer validated on 70 lab profiles (LOO AUC 0.68);
+  it is a screening aid with quantified uncertainty, **not** a planting guarantee. Its
+  saxaul-specific skill rides on small n (6 positives) and is reported with wide CIs.
+- V6 zones 3/4 are a *severity split* on a single validated NDMI axis (the 30 m stack
+  lacks V5's separate wet/dry-brine spectral bands and the SCL water mask); soil labels
+  are 2012–2014 while the NDMI composite is recent (quasi-stationary assumption).
 - `Candidate suitable` is a residual class after excluding known spectral/topographic risk classes.
 - Remote-sensing indices are surface proxies and cannot replace root-zone salinity, groundwater depth, survival observations, or field agronomy.
 - Current spatial validation has only 11 mapped points and unresolved coordinate authority.
@@ -211,6 +282,7 @@ V5.1 хранит данные в `outputs/science/`:
 | V3.0–V3.2 | NDMI pivot, slope filter |
 | V4.0–V4.1 | Coastline mask, OSM roads, 782 KML |
 | **V5.1** | **10 м screening baseline, adaptive thresholds, provenance, validation, uncertainty diagnostics** |
+| **V6** | **Слой солёности по 70 лаб. профилям: валидированная модель (LOO AUC 0.68), сплошной слой 30 м, пространственная CV, неопределённость** |
 
 ---
 

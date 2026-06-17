@@ -183,6 +183,29 @@ def main() -> None:
                      f'{r["specificity"]} | {r["n"]} | {r["n_pos"]} |')
     lines += ["", f"Published thresholds (AUC≥{MIN_AUC}, n≥{MIN_N}): "
               f"{len(calibrated)} of {len(results)} evaluations.", ""]
+    lines += [
+        "## Interpretation", "",
+        "All published cuts have the agronomically correct sign:", "",
+        "- **Saxaul suitability** ↑ with low chloride (Cl ≤ 0.06 %, AUC 0.73), low total",
+        "  salts (≤ 0.31 %, AUC 0.64), low sodium (exch. Na ≤ 0.26, AUC 0.69), low NDWI",
+        "  /NDMI (drier surface), and ↑ with carbonate (CaCO3 ≥ 5.3 %, AUC 0.86) and",
+        "  sandy texture (sand ≥ 63 %, AUC 0.70). This matches saxaul autecology:",
+        "  it establishes on light, non-saline, carbonate substrates and is excluded by",
+        "  chloride-sodium solonchaks.",
+        "- **NDMI as a salinity proxy** is now *measured*, not assumed: 30 m NDMI",
+        "  separates saline soils (>1 %) at AUC 0.77 and strongly saline (>3 %) at 0.78,",
+        "  optimal cut ≈ -0.10. This replaces the blind P15/P85 percentile with a",
+        "  ground-truth-anchored breakpoint and confirms the CLAUDE.md polarity",
+        "  (high NDMI ⇒ saline brine, NOT favorable).", "",
+        "## What changes / what does not", "",
+        "- The frozen V5.1 10 m map and its thresholds_v5.json are **unchanged** (golden",
+        "  snapshot stays valid).",
+        "- These calibrated cuts parameterize the Phase 6 soil-anchored suitability",
+        "  model on the 30 m wall-to-wall stack, where they are statistically supported.",
+        "- Specificities are modest for the saxaul-label cuts (only 6 positives); these",
+        "  are screening aids feeding a multivariate model, not standalone classifiers.",
+        "  Phase 7 spatial CV quantifies combined skill.", "",
+    ]
     (CANON / "CALIBRATION_REPORT.md").write_text("\n".join(lines), encoding="utf-8")
 
     print(json.dumps({"n_evaluations": len(results),
