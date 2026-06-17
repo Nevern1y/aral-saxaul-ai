@@ -1,0 +1,28 @@
+{
+  "version": "V6-salinity-logit",
+  "purpose": "P(topsoil total salts > 1%) from 30m NDMI; suitability = 1 - P(saline)",
+  "model_type": "logistic regression (numpy IRLS, L2)",
+  "predictor": "rs30_ndmi",
+  "scaler": {
+    "mean": [
+      -0.07684598116902631
+    ],
+    "std": [
+      0.08955967903853645
+    ]
+  },
+  "coefficients_standardized": {
+    "intercept": -0.46952459452016604,
+    "rs30_ndmi": 0.3249473785476439
+  },
+  "l2_lambda": 0.1,
+  "training": {
+    "n": 70,
+    "n_saline": 27,
+    "loo_auc": 0.682,
+    "in_sample_auc": 0.767
+  },
+  "predict_saline": "P = sigmoid(intercept + coef*(ndmi - mean)/std)",
+  "predict_suitability": "suitability = 1 - P_saline",
+  "notes": "Data-validated core: NDMI vs MEASURED soil salts, independent of saxaul labels."
+}

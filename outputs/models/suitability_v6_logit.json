@@ -1,0 +1,34 @@
+{
+  "version": "V6-saxaul-logit-EXPLORATORY",
+  "status": "NOT FOR DECISIONS — LOO AUC near chance; kept for transparency",
+  "predictors": [
+    "rs30_ndmi",
+    "rs30_msavi"
+  ],
+  "scaler": {
+    "mean": [
+      -0.09405707534876584,
+      0.16381890552916697
+    ],
+    "std": [
+      0.04548883679034566,
+      0.08125725394122651
+    ]
+  },
+  "coefficients_standardized": {
+    "intercept": -1.7167857296926543,
+    "rs30_ndmi": -0.485260903854493,
+    "rs30_msavi": 0.29777364821588964
+  },
+  "odds_ratio_per_sd": {
+    "rs30_ndmi": 0.616,
+    "rs30_msavi": 1.347
+  },
+  "l2_lambda": 0.3,
+  "training": {
+    "n": 56,
+    "n_pos": 6,
+    "loo_auc": 0.48,
+    "in_sample_auc": 0.667
+  }
+}
