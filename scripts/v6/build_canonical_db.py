@@ -129,6 +129,10 @@ def build_profiles() -> pd.DataFrame:
                 "coord_source_file": fname,
             }
     prof = pd.DataFrame(list(rows.values()))
+    prof["coord_provenance"] = np.where(
+        prof["lat_dd"].notna() & prof["lon_dd"].notna(), "surveyed", "missing"
+    )
+    prof = recover_offset_coords(prof)
     prof["src_year"] = prof["pit_id"].str.extract(r"/(\d{2})$")[0].map(
         lambda x: 2000 + int(x) if pd.notna(x) else np.nan
     )
@@ -138,6 +142,37 @@ def build_profiles() -> pd.DataFrame:
     )
     prof["has_coordinates"] = prof["lat_dd"].notna() & prof["lon_dd"].notna()
     return prof.sort_values("pit_id").reset_index(drop=True)
+
+
+# Coordinates recovered from a documented relative offset in the field report.
+# Only points with (a) a KNOWN direction and (b) a coordinate-bearing
+# predecessor are recovered. The offset (<=50 m) is far below the 10 m pixel +
+# 2012-2014 vs ~2024 temporal uncertainty, so this is defensible. Recovered
+# points are flagged coord_provenance="recovered_offset" so Phase 4/7 can run a
+# sensitivity check with them excluded. 24/14 is the gold negative (documented
+# saxaul-plantation failure) whose own coordinates are "н/д" in the source.
+OFFSET_RECOVERY = {
+    "24/14": {"ref": "23/14", "east_m": 50.0, "north_m": 0.0,
+              "evidence": "Разрез 24/14: «В 50 м восточнее предыдущего разреза» (предыдущий = 23/14)"},
+}
+
+
+def recover_offset_coords(prof: pd.DataFrame) -> pd.DataFrame:
+    """Fill coordinates for profiles documented as a metric offset from a peer."""
+    idx = {r["pit_id"]: i for i, r in prof.iterrows()}
+    for pid, spec in OFFSET_RECOVERY.items():
+        if pid not in idx or spec["ref"] not in idx:
+            continue
+        tgt, ref = prof.loc[idx[pid]], prof.loc[idx[spec["ref"]]]
+        if pd.notna(tgt["lat_dd"]) or pd.isna(ref["lat_dd"]):
+            continue  # already has coords, or reference has none
+        ref_lat = float(ref["lat_dd"])
+        dlat = spec["north_m"] / 110_540.0
+        dlon = spec["east_m"] / (111_320.0 * np.cos(np.radians(ref_lat)))
+        prof.loc[idx[pid], "lat_dd"] = ref_lat + dlat
+        prof.loc[idx[pid], "lon_dd"] = float(ref["lon_dd"]) + dlon
+        prof.loc[idx[pid], "coord_provenance"] = "recovered_offset"
+    return prof
 
 
 # ---------------------------------------------------------------------------
@@ -208,7 +243,8 @@ def main() -> None:
 
     # Attach coordinates / context to each layer for convenience.
     layers = layers.merge(
-        profiles[["pit_id", "lat_dd", "lon_dd", "elevation_m", "in_aoi", "has_coordinates"]],
+        profiles[["pit_id", "lat_dd", "lon_dd", "elevation_m", "in_aoi",
+                  "has_coordinates", "coord_provenance"]],
         on="pit_id", how="left",
     )
     layers["georeferenced"] = layers["has_coordinates"].fillna(False)
@@ -222,6 +258,9 @@ def main() -> None:
         "version": "V6-canonical",
         "n_profiles_total": int(len(profiles)),
         "n_profiles_with_coords": int(profiles["has_coordinates"].sum()),
+        "coord_provenance_counts": profiles["coord_provenance"].value_counts().to_dict(),
+        "recovered_offset_ids": sorted(
+            profiles.loc[profiles["coord_provenance"] == "recovered_offset", "pit_id"]),
         "n_profiles_in_aoi": int(profiles["in_aoi"].sum()),
         "n_soil_layers": int(len(layers)),
         "n_lab_profiles": len(lab_ids),

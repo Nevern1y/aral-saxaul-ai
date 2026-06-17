@@ -1,19 +1,26 @@
 {
   "version": "V6-canonical",
   "n_profiles_total": 76,
-  "n_profiles_with_coords": 69,
-  "n_profiles_in_aoi": 69,
+  "n_profiles_with_coords": 70,
+  "coord_provenance_counts": {
+    "surveyed": 69,
+    "missing": 6,
+    "recovered_offset": 1
+  },
+  "recovered_offset_ids": [
+    "24/14"
+  ],
+  "n_profiles_in_aoi": 70,
   "n_soil_layers": 369,
   "n_lab_profiles": 76,
-  "n_lab_with_coords": 69,
-  "n_lab_without_coords": 7,
+  "n_lab_with_coords": 70,
+  "n_lab_without_coords": 6,
   "lab_without_coords": [
     "03/14",
     "04/14",
     "10/13",
     "13/14",
     "15/14",
-    "24/14",
     "25/14"
   ],
   "outputs": {
