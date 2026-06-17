@@ -1,0 +1,4 @@
+# Dev/test tooling (NOT installed on Streamlit Cloud — keep out of requirements.txt).
+# Install locally with:  pip install -r requirements-dev.txt
+pytest>=8.0
+ruff>=0.6
