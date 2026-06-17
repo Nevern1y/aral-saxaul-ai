@@ -37,6 +37,14 @@ V5_VALIDATION_REPORT_PATH = SCIENCE_DIR / "v5_validation_report.md"
 V5_COORDINATE_ADJUDICATION_REPORT_PATH = SCIENCE_DIR / "v5_coordinate_adjudication_report.md"
 V5_UNCERTAINTY_REPORT_PATH = SCIENCE_DIR / "v5_uncertainty_report.md"
 
+# ── V6 science paths (lab-data layer; JSON/CSV tracked, rasters regenerated) ──
+CANON_DIR = BASE_DIR / "data" / "canonical"
+V6_SALINITY_MODEL_PATH = BASE_DIR / "outputs" / "models" / "salinity_v6_logit.json"
+V6_SUIT_STATS_PATH = BASE_DIR / "outputs" / "data" / "suitability_v6_stats.json"
+V6_PIT_VALIDATION_PATH = BASE_DIR / "outputs" / "data" / "suitability_v6_pit_validation_summary.json"
+V6_SPATIAL_PATH = BASE_DIR / "outputs" / "data" / "spatial_validation_v6.json"
+V6_PIT_TABLE_PATH = CANON_DIR / "suitability_v6_pit_validation.csv"
+
 st.set_page_config(page_title="Aral Saxaul: Платформа Фитомелиорации", layout="wide")
 
 # UI/UX: ограничение ширины дашборда для комфортного чтения на широких экранах
@@ -143,6 +151,27 @@ def load_v5_uncertainty_summary():
         with open(V5_UNCERTAINTY_SUMMARY_PATH, "r", encoding="utf-8") as f:
             return json.load(f)
     return {}
+
+
+@st.cache_data
+def _load_json(path_str):
+    p = Path(path_str)
+    if p.exists():
+        with open(p, encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+
+@st.cache_data
+def load_v6_science():
+    """Load the V6 lab-data science artifacts (graceful if absent)."""
+    return {
+        "salinity": _load_json(str(V6_SALINITY_MODEL_PATH)),
+        "suit_stats": _load_json(str(V6_SUIT_STATS_PATH)),
+        "pit_validation": _load_json(str(V6_PIT_VALIDATION_PATH)),
+        "spatial": _load_json(str(V6_SPATIAL_PATH)),
+        "pit_table": (pd.read_csv(V6_PIT_TABLE_PATH) if V6_PIT_TABLE_PATH.exists() else pd.DataFrame()),
+    }
 
 
 @st.cache_data
@@ -768,6 +797,121 @@ with tab_dev:
         "\u0430\u0434\u0430\u043f\u0442\u0438\u0432\u043d\u044b\u043c\u0438 \u043f\u043e\u0440\u043e\u0433\u0430\u043c\u0438 "
         "\u043f\u043e\u0434 \u043a\u043e\u043d\u043a\u0440\u0435\u0442\u043d\u0443\u044e \u0441\u0446\u0435\u043d\u0443."
     )
+
+    # ── V6 lab-data science layer ──────────────────────────────────────
+    v6 = load_v6_science()
+    if v6["salinity"]:
+        st.markdown("---")
+        st.subheader("V6: слой солёности по лабораторным данным (70 почвенных профилей)")
+        st.caption(
+            "Новый слой обучен на измеренной солёности почвы из отчёта Пачикина–Козыбаевой "
+            "(2012–2014, 70 georeferenced разрезов). Он не заменяет карту V5.1, а дополняет её "
+            "проверяемой количественной оценкой засоления. Карта и интерфейс выше не изменились."
+        )
+
+        sal = v6["salinity"]
+        spatial = v6.get("spatial", {})
+        sm = spatial.get("salinity_model", {})
+        tr = sal.get("training", {})
+
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Профилей (обучение)", f"{tr.get('n', '—')}",
+                  help="Georeferenced почвенные разрезы с измеренной солёностью верхнего слоя.")
+        c2.metric("Солёных (>1%)", f"{tr.get('n_saline', '—')}")
+        loo = sm.get("loo_auc", tr.get("loo_auc"))
+        ci = sm.get("loo_auc_ci95")
+        c3.metric("AUC (LOO)", f"{loo}" if loo is not None else "—",
+                  help="Площадь под ROC по схеме leave-one-out: способность отличать солёные точки от несолёных.")
+        c4.metric("95% интервал", f"{ci[0]}–{ci[1]}" if ci else "—",
+                  help="Бутстрап-интервал AUC. Не пересекает 0.5 — связь устойчива.")
+
+        st.markdown(
+            "**Что это значит простыми словами:** чем выше спутниковый индекс влажности NDMI на "
+            "сухом дне, тем выше измеренная солёность почвы (это подтверждено лабораторно: "
+            "Spearman ρ ≈ +0.66). Балл пригодности считается как «1 − вероятность засоления», "
+            "поэтому менее солёные участки получают более высокий балл."
+        )
+
+        # spatial validation honesty
+        if sm:
+            pb = sm.get("spatial_lbo_perblock_auc")
+            pooled = sm.get("spatial_lbo_pooled_auc")
+            sign = sm.get("within_block_sign_positive", "—")
+            with st.expander("Пространственная проверка (честно про ограничения)", expanded=False):
+                st.markdown(
+                    f"""
+                    Чтобы проверить, не завышена ли точность из-за того, что близкие точки похожи,
+                    мы делили данные на пространственные блоки (~{sm.get('block_km', 20):.0f} км) и
+                    обучали модель без каждого блока по очереди.
+
+                    - **Средняя AUC по блокам: {pb}** — внутри каждого участка модель верно ранжирует
+                      солёные и несолёные точки.
+                    - Объединённая AUC по всем блокам: {pooled} — ниже, потому что **базовый уровень
+                      засоления различается между районами** (в одном блоке солёные почти все точки,
+                      в другом — почти ни одной). Это смещение калибровки между районами, **а не
+                      потеря сигнала**.
+                    - Знак связи NDMI→соль положительный в **{sign}** проверяемых блоках.
+
+                    Вывод: модель надёжно отвечает на локальный вопрос «где здесь менее солёно»,
+                    но абсолютный уровень засоления между удалёнными районами нужно калибровать
+                    отдельно. Это записано как ограничение, а не скрыто.
+                    """
+                )
+
+        # suitability zones from the wall-to-wall 30m layer
+        stats = v6.get("suit_stats", {})
+        zone_ha = stats.get("zone_area_ha", {})
+        if zone_ha:
+            names = {"1": "1 Кандидат (низкая соль)", "3": "3 Умеренное засоление",
+                     "4": "4 Сильное засоление", "10": "10 Растительность", "0": "0 Вода/нет данных"}
+            land = sum(float(zone_ha.get(k, 0)) for k in ("1", "3", "4", "10"))
+            rows = []
+            for k in ("1", "3", "4", "10", "0"):
+                ha = float(zone_ha.get(k, 0))
+                rows.append({
+                    "Зона V6": names[k],
+                    "Площадь, га": f"{ha:,.0f}",
+                    "% суши": f"{ha / land * 100:.1f}%" if (land and k != "0") else "—",
+                })
+            st.markdown("**Зоны V6 на сплошном слое 30 м (та же область, что у V5.1):**")
+            st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
+            vf = stats.get("valid_fraction_of_aoi")
+            st.caption(
+                f"Покрытие: {vf*100:.0f}% области исследования получает оценку (сплошной слой 30 м), "
+                "против ~46% у композита 10 м. Зоны 3/4 — это градация тяжести засоления по одной "
+                "проверенной оси NDMI, в тех же кодах/цветах легенды, что и V5.1 (UX не меняется)."
+                if vf is not None else
+                "Зоны в тех же кодах/цветах легенды, что и V5.1 (UX не меняется)."
+            )
+
+        # ground-truth + independent validation
+        pv = v6.get("pit_validation", {})
+        if pv:
+            det = pv.get("saline_detector_zone34", {})
+            cc1, cc2, cc3 = st.columns(3)
+            cc1.metric("V6 покрывает точек", f"{pv.get('v6_scored_nonwater', '—')}/70",
+                       help="Не-водные точки наземной правды, попавшие в оцениваемые зоны.")
+            cc2.metric("V5.1 покрывает точек", f"{pv.get('v5_covered_nonwater', '—')}/70",
+                       help="Для сравнения: замороженный продукт 10 м покрывает меньше.")
+            cc3.metric("Детектор засоления",
+                       f"чувств. {det.get('sensitivity', '—')} / спец. {det.get('specificity', '—')}",
+                       help="Зоны 3/4 как детектор солёности >1% на покрытых точках.")
+            st.caption(
+                "54 из 70 разрезов лежат вне контура моря 1960 г. (съёмка охватывала весь Приаралье, "
+                "а не только дно), поэтому оценивается ~15 точек — но это всё равно больше, чем "
+                "покрывает текущий продукт V5.1 (13). Полная таблица — в файлах "
+                "`outputs/data/suitability_v6_pit_validation.csv`."
+            )
+
+        af = spatial.get("independent_aralfield")
+        if af:
+            st.markdown(
+                f"**Независимая проверка (AralField 2018, саксаул):** AUC {af.get('auc')}, "
+                f"n={af.get('n')} ({af.get('n_present')} с саксаулом), "
+                f"интервал {af.get('ci95')[0] if af.get('ci95') else '—'}–"
+                f"{af.get('ci95')[1] if af.get('ci95') else '—'}. "
+                "Точек слишком мало для надёжной оценки — только как направление."
+            )
 
     # ── Pilot validation ───────────────────────────────────────────────
     st.markdown("---")

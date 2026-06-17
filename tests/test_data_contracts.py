@@ -71,3 +71,48 @@ def test_audit_figure_builds_from_real_pixels() -> None:
     fig = app.make_audit_fig(json.dumps({str(k): v for k, v in pixels.items()}), total_px)
     # With real data present the audit donut must build (not None).
     assert fig is not None
+
+
+# ── V6 lab-data science layer contracts ────────────────────────────────
+# These artifacts ARE tracked in git (JSON/CSV), so they should exist on a clean
+# checkout; guard anyway so the suite is robust if a script has not been run.
+
+def test_v6_science_loader_shape() -> None:
+    v6 = app.load_v6_science()
+    assert set(v6) >= {"salinity", "suit_stats", "pit_validation", "spatial", "pit_table"}
+
+
+def test_v6_salinity_model_keys() -> None:
+    sal = app.load_v6_science()["salinity"]
+    if not sal:
+        pytest.skip("salinity_v6_logit.json not present")
+    # Keys the V6 metrics panel + the numpy inference path depend on.
+    assert sal["predictor"] == "rs30_ndmi"
+    assert {"mean", "std"} <= set(sal["scaler"])
+    assert {"intercept", "rs30_ndmi"} <= set(sal["coefficients_standardized"])
+    assert sal["training"]["n"] == 70
+
+
+def test_v6_spatial_validation_auc_sane() -> None:
+    sp = app.load_v6_science()["spatial"]
+    if not sp:
+        pytest.skip("spatial_validation_v6.json not present")
+    sm = sp["salinity_model"]
+    # LOO AUC and its bootstrap CI must be well-formed (lower bound >= 0.5 after the fix).
+    assert 0.0 <= sm["loo_auc"] <= 1.0
+    lo, hi = sm["loo_auc_ci95"]
+    assert lo <= sm["loo_auc"] <= hi
+    assert lo >= 0.5, "bootstrap AUC lower bound below 0.5 signals the in-sample-refit bug"
+    # per-block spatial AUC must be reported (the honest spatial metric).
+    assert "spatial_lbo_perblock_auc" in sm
+
+
+def test_v6_suitability_zone_areas_present() -> None:
+    stats = app.load_v6_science()["suit_stats"]
+    if not stats:
+        pytest.skip("suitability_v6_stats.json not present")
+    zone_ha = stats["zone_area_ha"]
+    # The V5.1 ZoneClass codes the dashboard table renders.
+    for code in ("0", "1", "3", "4", "10"):
+        assert code in zone_ha
+    assert 0.0 <= stats["valid_fraction_of_aoi"] <= 1.0
