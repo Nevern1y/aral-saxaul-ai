@@ -116,3 +116,14 @@ def test_v6_suitability_zone_areas_present() -> None:
     for code in ("0", "1", "3", "4", "10"):
         assert code in zone_ha
     assert 0.0 <= stats["valid_fraction_of_aoi"] <= 1.0
+
+
+def test_v6_map_html_self_contained() -> None:
+    # The primary V6 map must be tracked HTML with a base64-embedded image so it
+    # renders on Streamlit Cloud (the source .tif is gitignored).
+    p = app.V6_MAP_PATH
+    if not p.exists():
+        pytest.skip("suitability_map_v6.html not present (run render_v6_map.py)")
+    txt = p.read_text(encoding="utf-8")
+    assert "data:image/png;base64" in txt, "V6 map must embed image as base64 (not a file path)"
+    assert "leaflet" in txt.lower(), "V6 map must be a Leaflet/Folium map"

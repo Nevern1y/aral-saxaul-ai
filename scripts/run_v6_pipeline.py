@@ -45,6 +45,7 @@ STEPS = [
     ("v6/calibrate_thresholds.py", False, False),
     ("v6/train_suitability_model.py", False, False),
     ("v6/build_suitability_index.py", True, False),
+    ("v6/render_v6_map.py", True, False),
     ("v6/spatial_validation.py", True, False),
 ]
 

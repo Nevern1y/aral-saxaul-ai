@@ -26,6 +26,7 @@ GRID_STEP = 0.1
 
 # ── V5.0 paths (strict — no V4 fallback) ──────────────────────────────
 V5_MAP_PATH = BASE_DIR / "outputs" / "reports" / "suitability_map_v5.html"
+V6_MAP_PATH = BASE_DIR / "outputs" / "reports" / "suitability_map_v6.html"
 V5_OPERATIONAL_PATH = BASE_DIR / "outputs" / "data" / "operational_zones_v5.geojson"
 V5_THRESHOLDS_PATH = BASE_DIR / "outputs" / "data" / "thresholds_v5.json"
 V5_STATS_PATH = BASE_DIR / "outputs" / "data" / "v5_stats.json"
@@ -495,32 +496,52 @@ with tab_analytics:
     )
     col4.metric("Оценка по сетке 100 м", f"{candidate_100m_area_ha:,.0f} га")
 
-    # ── Карта на самом видном месте ─────────────────────────────────
-    st.markdown("### Карта предварительного отбора")
-    if V5_MAP_PATH.exists():
-        _render_map(V5_MAP_PATH.read_text(encoding="utf-8"))
-        st.caption("Карта 10 м: предварительный отбор мест для проверки. Это не доказательство, что посадка там точно приживется.")
-        if V5_OPERATIONAL_PATH.exists():
-            gj_size_mb = V5_OPERATIONAL_PATH.stat().st_size / (1024 * 1024)
-            if gj_size_mb < 50:
-                gj_bytes = V5_OPERATIONAL_PATH.read_bytes()
-                st.download_button(
-                    label="Скачать полигоны участков (GeoJSON, >=10 га)",
-                    data=gj_bytes,
-                    file_name=V5_OPERATIONAL_PATH.name,
-                    mime="application/geo+json",
-                    help="Экспорт контуров candidate-зон (только кластеры ≥10 га) для GPS и дальнейшей полевой проверки",
-                )
-            else:
-                st.info(
-                    f"📥 Файл: `{V5_OPERATIONAL_PATH.name}` ({gj_size_mb:.0f} MB). "
-                    "Копируйте из `outputs/data/`."
-                )
-    else:
-        st.warning(
-            f"Файл карты не найден: {V5_MAP_PATH.name}. "
-            "Запустите `python scripts/run_inference_v5.py`"
+    # ── Карта на самом видном месте: V6 главная, V5.1 как слой детализации ──
+    st.markdown("### Карта пригодности V6 (засоление по лабораторным данным)")
+    if V6_MAP_PATH.exists():
+        _render_map(V6_MAP_PATH.read_text(encoding="utf-8"))
+        st.caption(
+            "Главная карта V6 (30 м): балл пригодности = 1 − вероятность засоления, "
+            "обучено на 70 измеренных почвенных профилях (LOO AUC 0.68). Переключатель "
+            "слоёв справа вверху: «Зоны» и «Балл 0..1». Зоны 3/4 — градация засоления по "
+            "NDMI, а не физика влажной/сухой рапы V5. Это карта для проверки в поле, не гарантия посадки."
         )
+    else:
+        st.info(
+            f"Карта V6 не найдена: {V6_MAP_PATH.name}. "
+            "Запустите `python scripts/v6/render_v6_map.py` (после build_suitability_index.py). "
+            "Ниже показана карта V5.1."
+        )
+
+    # V5.1 — детализация 10 м + источник логистики (сохранена, не удалена)
+    with st.expander("Детальная карта V5.1 (10 м, правила Sentinel-2)", expanded=not V6_MAP_PATH.exists()):
+        if V5_MAP_PATH.exists():
+            _render_map(V5_MAP_PATH.read_text(encoding="utf-8"))
+            st.caption(
+                "Карта V5.1 (10 м): многофакторный скрининг по правилам (NDMI+NDSI+BR+NDVI+уклон), "
+                "выше детализация и маски воды/рельефа. Остаётся основой для планирования выездов."
+            )
+            if V5_OPERATIONAL_PATH.exists():
+                gj_size_mb = V5_OPERATIONAL_PATH.stat().st_size / (1024 * 1024)
+                if gj_size_mb < 50:
+                    gj_bytes = V5_OPERATIONAL_PATH.read_bytes()
+                    st.download_button(
+                        label="Скачать полигоны участков (GeoJSON, >=10 га)",
+                        data=gj_bytes,
+                        file_name=V5_OPERATIONAL_PATH.name,
+                        mime="application/geo+json",
+                        help="Экспорт контуров candidate-зон (только кластеры ≥10 га) для GPS и дальнейшей полевой проверки",
+                    )
+                else:
+                    st.info(
+                        f"📥 Файл: `{V5_OPERATIONAL_PATH.name}` ({gj_size_mb:.0f} MB). "
+                        "Копируйте из `outputs/data/`."
+                    )
+        else:
+            st.warning(
+                f"Файл карты не найден: {V5_MAP_PATH.name}. "
+                "Запустите `python scripts/run_inference_v5.py`"
+            )
 
     st.markdown("### Что посчитала карта")
     st.info(
