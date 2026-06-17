@@ -1,0 +1,23 @@
+{
+  "version": "V6-canonical",
+  "n_profiles_total": 76,
+  "n_profiles_with_coords": 69,
+  "n_profiles_in_aoi": 69,
+  "n_soil_layers": 369,
+  "n_lab_profiles": 76,
+  "n_lab_with_coords": 69,
+  "n_lab_without_coords": 7,
+  "lab_without_coords": [
+    "03/14",
+    "04/14",
+    "10/13",
+    "13/14",
+    "15/14",
+    "24/14",
+    "25/14"
+  ],
+  "outputs": {
+    "profiles": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\data\\canonical\\profiles_v6.csv",
+    "soil_layers": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\data\\canonical\\soil_layers_v6.csv"
+  }
+}
