@@ -92,7 +92,10 @@ pip install -r requirements.txt        # app/runtime deps (Python 3.12)
 streamlit run app.py                    # dashboard, port 8501
 
 pip install -r requirements-dev.txt     # pytest + ruff (NOT for Streamlit Cloud)
-python -m pytest                         # 13 tests; smoke + V5/V6 data contracts
+python -m pytest                         # 18 tests; smoke + V5/V6 data contracts
+# ⚠ Must run under SYSTEM Python 3.12 (e.g. C:\Users\...\Python\Python312\python.exe).
+# The Hermes-default venv has no pytest and no GIS stack — you'll see "No module named pytest".
+# A committed requirements.lock captures the working interpreter's package set.
 ```
 
 Full pipeline regeneration (needs GEE auth + local GIS libs): see README

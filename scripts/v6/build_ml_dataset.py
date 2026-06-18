@@ -194,6 +194,20 @@ def sample_rs(points: pd.DataFrame) -> pd.DataFrame:
         if not tp.exists():
             continue
         with rasterio.open(tp) as src:
+            # Validate band order matches LEGACY_BANDS contract (item 7: positional-contract guard).
+            # Tile descriptions are uppercase; LEGACY_BANDS are lowercase — compare case-insensitively.
+            actual_descs = [d.lower() if d else "" for d in (src.descriptions or [])]
+            if actual_descs:
+                for bi, expected_band in enumerate(LEGACY_BANDS):
+                    if bi >= len(actual_descs):
+                        break
+                    if actual_descs[bi] != expected_band:
+                        raise ValueError(
+                            f"Band order mismatch in {tp.name}: "
+                            f"band {bi + 1} description is '{actual_descs[bi]}' "
+                            f"but LEGACY_BANDS[{bi}] expects '{expected_band}'. "
+                            f"Update LEGACY_BANDS or regenerate the feature stack."
+                        )
             arrs = [src.read(i + 1) for i in range(min(src.count, len(LEGACY_BANDS)))]
             if src.crs and src.crs.to_epsg() != 4326:
                 xx, yy = rio_transform("EPSG:4326", src.crs, list(lon), list(lat))

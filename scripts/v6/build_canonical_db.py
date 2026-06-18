@@ -111,6 +111,24 @@ def build_profiles() -> pd.DataFrame:
     for fname in MORPH_FILES:
         df = pd.read_csv(RAW / f"{fname}.csv", dtype=str, keep_default_na=False)
         df.columns = [c.strip() for c in df.columns]
+        if len(df.columns) < 4:
+            raise ValueError(
+                f"{fname}.csv has only {len(df.columns)} columns; expected at least 4 "
+                f"(id, lat, lon, elevation at positions 0–3). "
+                f"Do not reorder the morph CSV columns — it silently corrupts coordinates."
+            )
+        # Item 7: positional-contract guard. Columns 1 and 2 must carry Lat/Lon keywords.
+        _latc_hint, _lonc_hint = df.columns[1].lower(), df.columns[2].lower()
+        if "lat" not in _latc_hint:
+            raise ValueError(
+                f"{fname}.csv: columns[1]='{df.columns[1]}' does not contain 'lat'. "
+                f"Expected Latitude at position 1. Reorder will silently corrupt coordinates."
+            )
+        if "lon" not in _lonc_hint:
+            raise ValueError(
+                f"{fname}.csv: columns[2]='{df.columns[2]}' does not contain 'lon'. "
+                f"Expected Longitude at position 2. Reorder will silently corrupt coordinates."
+            )
         idc, latc, lonc, hc = df.columns[0], df.columns[1], df.columns[2], df.columns[3]
         vegc = next((c for c in df.columns if "Растительност" in c or "рельеф" in c.lower()), df.columns[-2])
         for _, r in df.iterrows():

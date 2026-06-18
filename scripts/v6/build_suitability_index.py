@@ -45,8 +45,10 @@ the script exits with a clear message instead of crashing the import.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import numpy as np
@@ -73,6 +75,11 @@ TILES = [
     {"path": ODATA / "feature_stack_30m_tile1.tif", "col0": 0},       # 58-61E, cols [0,12544)
     {"path": ODATA / "feature_stack_30m_tile0_redo.tif", "col0": 12544},  # 61-62E, cols [12544,14844)
 ]
+# SHA256 pins for the two good tiles (R5/W13 hardening).
+TILE_SHA256 = {
+    "feature_stack_30m_tile1.tif":       "72f09403001119f849d00d414a1a6d933a0734e0140951466cdf0d44888575fb",
+    "feature_stack_30m_tile0_redo.tif":  "5f797be1956c71038dc3754fdaed4b28c916718f969c6dbc9ae1199acf0a69fa",
+}
 # Restrict to the SAME study area as V5.1: the 1960 Aral footprint (dried seabed).
 # aoi_mask_v5.tif is pixel-identical to the 30 m grid (same EPSG:4326, transform, dims):
 # value 1 = inside AOI, 0 = outside. Without this the 30 m box would score ~180k km2 of
@@ -112,6 +119,62 @@ class _null_ctx:
         return False
 
 
+def _sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def assert_vrt_tile_offsets(vrt_path: Path, tiles: list, grid_w: int) -> None:
+    """Parse VRT XML DstRect and assert code col0 values match; verify full-width coverage."""
+    tree = ET.parse(vrt_path)
+    root = tree.getroot()
+    dst_rects: set = set()
+    for elem in root.iter("DstRect"):
+        dst_rects.add((int(elem.attrib["xOff"]), int(elem.attrib["xSize"])))
+    for tile in tiles:
+        name = tile["path"].name
+        col0 = tile["col0"]
+        if not any(xoff == col0 for xoff, _ in dst_rects):
+            raise AssertionError(
+                f"Tile '{name}' col0={col0} not found in VRT DstRect offsets {dst_rects}. "
+                f"The VRT may have been re-mosaicked. Update TILES col0 constants."
+            )
+    covered: set = set()
+    for tile in tiles:
+        col0 = tile["col0"]
+        for xoff, xsz in dst_rects:
+            if xoff == col0:
+                covered.update(range(col0, col0 + xsz))
+                break
+    if len(covered) != grid_w:
+        raise AssertionError(
+            f"VRT tile offsets cover {len(covered)} columns but grid_w={grid_w}. "
+            f"Tiles do not span the full grid width — pixel placement will be wrong."
+        )
+
+
+def assert_tile_sha256(tiles: list) -> None:
+    """Verify SHA256 of each tile that exists on disk (skip if tile absent)."""
+    for tile in tiles:
+        p = tile["path"]
+        name = p.name
+        if not p.exists() or name not in TILE_SHA256:
+            continue
+        actual = _sha256_file(p)
+        expected = TILE_SHA256[name]
+        if actual != expected:
+            raise AssertionError(
+                f"SHA256 mismatch for {name}:\n"
+                f"  expected {expected}\n"
+                f"  got      {actual}\n"
+                f"The tile has been replaced. Update TILE_SHA256 after confirming the new "
+                f"tile is correct, and regenerate all outputs from scratch."
+            )
+
+
 def load_salinity_model() -> dict:
     m = json.loads(SAL_MODEL.read_text(encoding="utf-8"))
     return {
@@ -136,6 +199,15 @@ def p_saline_factory(mdl: dict):
 
 def load_cuts() -> tuple[float, float]:
     c = json.loads(CALIB.read_text(encoding="utf-8"))["calibrated_thresholds"]
+    _REQUIRED = ["rs30_ndmi__soil_salinity>1.0%", "rs30_ndmi__soil_salinity>3.0%"]
+    for key in _REQUIRED:
+        if key not in c:
+            raise KeyError(
+                f"Required threshold key {key!r} is missing from {CALIB.name}. "
+                f"This predictor dropped below the AUC/n bar (auc<0.62 or n<12) during "
+                f"recalibration. Re-run calibrate_thresholds.py or lower the thresholds, "
+                f"but do NOT ship a suitability index without this key."
+            )
     saline = float(c["rs30_ndmi__soil_salinity>1.0%"]["cut"])
     strong = float(c["rs30_ndmi__soil_salinity>3.0%"]["cut"])
     return saline, strong
@@ -151,6 +223,13 @@ def main() -> None:
         raise SystemExit("rasterio is required to build the suitability raster (pip install rasterio).")
     if not VRT.exists():
         raise SystemExit(f"missing wall-to-wall stack: {VRT}")
+
+    # R5/W13: assert tile offsets match VRT DstRect and tiles cover the full grid width.
+    # assert_tile_sha256 skips tiles that are absent (clean-checkout) but verifies when present.
+    _vrt_root = ET.parse(VRT).getroot()
+    _grid_w = int(_vrt_root.attrib["rasterXSize"])
+    assert_vrt_tile_offsets(VRT, TILES, _grid_w)
+    assert_tile_sha256(TILES)
 
     mdl = load_salinity_model()
     p_saline = p_saline_factory(mdl)

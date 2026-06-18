@@ -33,8 +33,10 @@ Pure numpy + scipy(only for nothing critical) — deploy stays light. Outputs:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import numpy as np
@@ -67,6 +69,11 @@ TILES = [
     {"path": ODATA / "feature_stack_30m_tile1.tif", "col0": 0},
     {"path": ODATA / "feature_stack_30m_tile0_redo.tif", "col0": 12544},
 ]
+# SHA256 pins for the two good tiles (R5/W13 hardening — must match build_suitability_index.py).
+TILE_SHA256 = {
+    "feature_stack_30m_tile1.tif":       "72f09403001119f849d00d414a1a6d933a0734e0140951466cdf0d44888575fb",
+    "feature_stack_30m_tile0_redo.tif":  "5f797be1956c71038dc3754fdaed4b28c916718f969c6dbc9ae1199acf0a69fa",
+}
 NODATA_F = -9999.0
 DEG = 0.00026949458523585647
 ROW_BLOCK = 512
@@ -74,7 +81,68 @@ ROW_BLOCK = 512
 BLOCK_KM = 20.0          # spatial block radius for leave-block-out CV
 N_BOOT = 2000            # bootstrap resamples
 SEED = 12345             # fixed seed -> reproducible (no Date/random ban issue)
-L2 = 0.1                 # match the committed salinity model's lambda
+
+# RISK-4: the L2 lambda is read from the committed salinity model (not hardcoded)
+# and the full-data refit is asserted to reproduce that model, so the spatial CV
+# can never validate a different model than is shipped. These tolerances are far
+# tighter than the coefficient shift a different lambda would cause, yet loose
+# enough for last-ULP IRLS differences across platforms.
+COEF_TOL = 1e-6
+SCALER_TOL = 1e-6
+
+
+def _sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def assert_vrt_tile_offsets(vrt_path: Path, tiles: list, grid_w: int) -> None:
+    """Parse VRT XML DstRect and assert code col0 values match; verify full-width coverage."""
+    root = ET.parse(vrt_path).getroot()
+    dst_rects: set = set()
+    for elem in root.iter("DstRect"):
+        dst_rects.add((int(elem.attrib["xOff"]), int(elem.attrib["xSize"])))
+    for tile in tiles:
+        col0 = tile["col0"]
+        if not any(xoff == col0 for xoff, _ in dst_rects):
+            raise AssertionError(
+                f"Tile '{tile['path'].name}' col0={col0} not found in VRT DstRect offsets "
+                f"{dst_rects}. The VRT may have been re-mosaicked. Update TILES col0 constants."
+            )
+    covered: set = set()
+    for tile in tiles:
+        col0 = tile["col0"]
+        for xoff, xsz in dst_rects:
+            if xoff == col0:
+                covered.update(range(col0, col0 + xsz))
+                break
+    if len(covered) != grid_w:
+        raise AssertionError(
+            f"VRT tile offsets cover {len(covered)} columns but grid_w={grid_w}. "
+            f"Tiles do not span the full grid width — pixel placement will be wrong."
+        )
+
+
+def assert_tile_sha256(tiles: list) -> None:
+    """Verify SHA256 of each tile that exists on disk (skip if tile absent)."""
+    for tile in tiles:
+        p = tile["path"]
+        name = p.name
+        if not p.exists() or name not in TILE_SHA256:
+            continue
+        actual = _sha256_file(p)
+        expected = TILE_SHA256[name]
+        if actual != expected:
+            raise AssertionError(
+                f"SHA256 mismatch for {name}:\n"
+                f"  expected {expected}\n"
+                f"  got      {actual}\n"
+                f"The tile has been replaced. Update TILE_SHA256 after confirming the new "
+                f"tile is correct, and regenerate all outputs from scratch."
+            )
 
 
 def num(s: pd.Series) -> pd.Series:
@@ -153,7 +221,47 @@ def standardize(x):
     return mu, sd
 
 
+def load_committed_model() -> dict:
+    """Read the shipped salinity model: its L2 lambda, scaler, and standardized
+    coefficients. RISK-4 — the spatial CV must validate exactly this model, never
+    a silently re-selected one, so the lambda is sourced here (not hardcoded) and
+    the full-data refit below is asserted against these coefficients."""
+    m = json.loads(SAL_MODEL.read_text(encoding="utf-8"))
+    cs = m["coefficients_standardized"]
+    return {
+        "l2_lambda": float(m["l2_lambda"]),
+        "mean": float(m["scaler"]["mean"][0]),
+        "std": float(m["scaler"]["std"][0]),
+        "intercept": float(cs["intercept"]),
+        "rs30_ndmi": float(cs["rs30_ndmi"]),
+    }
+
+
+def assert_reproduces_committed(mu, sd, beta_full, committed) -> None:
+    """Fail loudly if the full-data refit does not reproduce the committed model.
+    Guarantees the spatial validation is run on the model that is actually shipped."""
+    dmu = abs(mu - committed["mean"])
+    dsd = abs(sd - committed["std"])
+    db0 = abs(float(beta_full[0]) - committed["intercept"])
+    db1 = abs(float(beta_full[1]) - committed["rs30_ndmi"])
+    if dmu > SCALER_TOL or dsd > SCALER_TOL or db0 > COEF_TOL or db1 > COEF_TOL:
+        raise SystemExit(
+            "spatial_validation refit does NOT reproduce the committed salinity model "
+            f"(salinity_v6_logit.json) — it would validate a DIFFERENT model:\n"
+            f"  scaler  mean Δ={dmu:.2e} std Δ={dsd:.2e} (tol {SCALER_TOL:.0e})\n"
+            f"  coef    b0   Δ={db0:.2e} b1  Δ={db1:.2e} (tol {COEF_TOL:.0e})\n"
+            f"  refit  : mean={mu!r} std={sd!r} b0={float(beta_full[0])!r} b1={float(beta_full[1])!r}\n"
+            f"  shipped: mean={committed['mean']!r} std={committed['std']!r} "
+            f"b0={committed['intercept']!r} b1={committed['rs30_ndmi']!r}\n"
+            f"Re-run Phase 6 (train_suitability_model.py) so the shipped model matches, "
+            f"or investigate the lambda/predictor drift before trusting the spatial AUC."
+        )
+
+
 def main() -> None:
+    committed = load_committed_model()
+    L2 = committed["l2_lambda"]   # RISK-4: lambda comes from the shipped model, not a literal
+
     df = pd.read_csv(ML)
     lat = num(df["lat_dd"]).to_numpy()
     lon = num(df["lon_dd"]).to_numpy()
@@ -172,6 +280,10 @@ def main() -> None:
 
     # ---- in-sample + LOO (reproduce committed numbers) ----
     beta_full, cov_full = fit_logit(Xs, y, L2)
+    # Guard: the model we just refit must BE the shipped model (same lambda,
+    # scaler, coefficients) — otherwise the spatial AUC below validates something
+    # the dashboard never ships.
+    assert_reproduces_committed(mu, sd, beta_full, committed)
     p_full = 1.0 / (1.0 + np.exp(-Xs @ beta_full))
     insample_auc = rank_auc(p_full, y)
 
@@ -327,6 +439,12 @@ def main() -> None:
 def write_uncertainty_raster(beta, cov, mu, sd, sup_lo, sup_hi):
     """SE(P_saline) per pixel: Var(eta)=g' COV g, g=[1,(ndmi-mu)/sd]; SE(P)=P(1-P)*SE(eta).
     Clipped to training support; outside-AOI -> NoData."""
+    # R5/W13: assert tile offsets match VRT DstRect; verify SHA256 of tiles on disk.
+    _vrt_root = ET.parse(VRT).getroot()
+    _grid_w = int(_vrt_root.attrib["rasterXSize"])
+    assert_vrt_tile_offsets(VRT, TILES, _grid_w)
+    assert_tile_sha256(TILES)
+
     with rasterio.open(VRT) as meta:
         prof = meta.profile
     prof.update(driver="GTiff", count=1, dtype="float32", nodata=NODATA_F,
