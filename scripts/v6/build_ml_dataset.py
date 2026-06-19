@@ -298,6 +298,12 @@ def main() -> None:
     df.to_csv(OUT, index=False, encoding="utf-8")
 
     # ---- correlations on trainable rows -----------------------------------
+    # ml_correlations_v6.csv: Spearman rho vs y_suitable (saxaul suitability target).
+    # Note: binary morph flags are included (nunique()>2 gate removed for flag columns).
+    # REPRODUCIBILITY NOTE: this table uses the saxaul y_suitable target. A separate
+    # morph_salinity_correlations_v6.csv (below) uses the salinity target and covers all
+    # morph features (including binary flags) to make ablation feature-selection numbers
+    # reproducible and NOT buried as inline code comments.
     from scipy.stats import spearmanr
     train = df[(df["label_weight"] > 0) & df["y_suitable"].notna()].copy()
     feat_cols = [c for c in df.columns
@@ -307,13 +313,41 @@ def main() -> None:
     for c in feat_cols:
         v = to_num(train[c])
         m = v.notna() & train["y_suitable"].notna()
-        if m.sum() >= 8 and v[m].nunique() > 2:
+        # Allow binary flags (nunique <= 2) through; only require n >= 8 and non-constant
+        if m.sum() >= 8 and v[m].nunique() >= 2:
             rho, p = spearmanr(v[m], train.loc[m, "y_suitable"])
             corrs.append({"feature": c, "spearman_rho": round(float(rho), 3),
                           "p_value": round(float(p), 4), "n": int(m.sum())})
     corr_df = pd.DataFrame(corrs).sort_values(
         "spearman_rho", key=lambda s: s.abs(), ascending=False)
     corr_df.to_csv(CANON / "ml_correlations_v6.csv", index=False, encoding="utf-8")
+
+    # ---- morph features vs SALINITY target (producer for ablation feature-selection) ---
+    # CORE REPRODUCIBILITY: the rho values used in spatial_validation.py to select
+    # ablation predictors MUST be produced here, not asserted as magic comments.
+    # Target: binary saline indicator (top_salt_sum_salts_pct > 1%) on ALL 70 rows
+    # (not just trainable rows), matching the ablation target in spatial_validation.py.
+    # Binary flags are included (no nunique filter beyond requiring variance).
+    df["y_saline"] = (to_num(df["top_salt_sum_salts_pct"]) > 1.0).astype(float)
+    morph_salt_corrs = []
+    for c in MORPH_COLS:
+        if c not in df.columns:
+            continue
+        v = to_num(df[c])
+        m = v.notna() & df["y_saline"].notna()
+        if m.sum() >= 8 and v[m].nunique() >= 2:
+            rho, p = spearmanr(v[m], df.loc[m, "y_saline"])
+            morph_salt_corrs.append({
+                "feature": c,
+                "spearman_rho_vs_salinity": round(float(rho), 3),
+                "p_value": round(float(p), 4),
+                "n": int(m.sum()),
+                "coverage_pct": round(100.0 * m.sum() / len(df), 1),
+            })
+    morph_salt_df = pd.DataFrame(morph_salt_corrs).sort_values(
+        "spearman_rho_vs_salinity", key=lambda s: s.abs(), ascending=False)
+    morph_salt_df.to_csv(CANON / "morph_salinity_correlations_v6.csv",
+                         index=False, encoding="utf-8")
 
     # RS consistency: does sampled point class match recomputed?
     both = df[df["v5_zone_map"].notna() & df["v5_zone_recomputed"].notna()]
@@ -355,7 +389,11 @@ def main() -> None:
         "temporal_mismatch_note": ("soil/vegetation observed 2012-2014 vs Sentinel-2 "
                                    "composite 2025; correlations are indicative, not "
                                    "contemporaneous"),
-        "outputs": {"ml_dataset": str(OUT), "correlations": str(CANON / "ml_correlations_v6.csv")},
+        "outputs": {
+            "ml_dataset": str(OUT),
+            "correlations_vs_saxaul": str(CANON / "ml_correlations_v6.csv"),
+            "correlations_vs_salinity_morph": str(CANON / "morph_salinity_correlations_v6.csv"),
+        },
     }
     (CANON / "ml_dataset_manifest.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")

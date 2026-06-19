@@ -66,13 +66,13 @@
       "n": 56
     },
     {
-      "feature": "top_exch_na",
+      "feature": "top_exch_sum",
       "spearman_rho": -0.213,
       "p_value": 0.1303,
       "n": 52
     },
     {
-      "feature": "top_exch_sum",
+      "feature": "top_exch_na",
       "spearman_rho": -0.213,
       "p_value": 0.1303,
       "n": 52
@@ -123,6 +123,7 @@
   "temporal_mismatch_note": "soil/vegetation observed 2012-2014 vs Sentinel-2 composite 2025; correlations are indicative, not contemporaneous",
   "outputs": {
     "ml_dataset": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\data\\canonical\\ml_dataset_v6.csv",
-    "correlations": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\data\\canonical\\ml_correlations_v6.csv"
+    "correlations_vs_saxaul": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\data\\canonical\\ml_correlations_v6.csv",
+    "correlations_vs_salinity_morph": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\data\\canonical\\morph_salinity_correlations_v6.csv"
   }
 }
