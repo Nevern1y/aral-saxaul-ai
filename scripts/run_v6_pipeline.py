@@ -4,6 +4,7 @@ Dependency order (each step consumes the previous step's outputs):
 
   1. v6/extract_docx_tables.py     docx -> interim long tables       [--docx]
   2. v6/build_canonical_db.py      -> profiles_v6.csv, soil_layers_v6.csv
+  2b.v6/morph_features.py          -> morph_features_v6.csv (per-pit morphology, reads morph_vocab.json)
   3. v6/extract_saxaul_labels.py   -> saxaul_labels_v6.csv
   4. v6/build_ml_dataset.py        + RS rasters -> ml_dataset_v6.csv  [needs rasters]
   5. v6/calibrate_thresholds.py    -> thresholds_v6_calibrated.json
@@ -40,6 +41,7 @@ V6 = BASE / "v6"
 STEPS = [
     ("v6/extract_docx_tables.py", False, True),
     ("v6/build_canonical_db.py", False, False),
+    ("v6/morph_features.py", False, False),       # Step 2b: derive per-pit morph features
     ("v6/extract_saxaul_labels.py", False, False),
     ("v6/build_ml_dataset.py", True, False),
     ("v6/calibrate_thresholds.py", False, False),

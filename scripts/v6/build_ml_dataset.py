@@ -56,6 +56,24 @@ TEX_COLS = ["sand_pct", "silt_pct", "clay_pct", "physical_clay_lt0p01",
             "hygroscopic_water_pct"]
 AGG_COLS = SALT_COLS + CHEM_COLS + TEX_COLS
 
+MORPH_FEATURES_PATH = CANON / "morph_features_v6.csv"
+
+# Morphological feature columns derived by morph_features.py (per-pit, depth-aware).
+# These join directly on pit_id (no depth aggregation — already pit-level summaries).
+# Coverage notes are in data/canonical/morph_features_manifest.json and morph_vocab.json.
+MORPH_COLS = [
+    "depth_to_moist_cm",    # capillary fringe proxy; NaN = all-dry profile (~93% coverage)
+    "depth_to_salt_cm",     # depth to salic horizon; NaN = no salt layer (~63% coverage)
+    "rust_mottling_flag",   # waterlogging indicator; 0/1, all 76 pits
+    "gley_flag",            # reductive anoxia; 0/1, all 76 pits
+    "solum_depth_cm",       # max recorded depth; 100% coverage
+    "hcl_effervescence_class",  # 2=surface, 1=weak, 0=none, NaN=missing (~80% coverage)
+    "surface_crust_flag",   # physical barrier for seedling emergence; 0/1, all 76 pits
+    "marine_shell_flag",    # relict seabed marker; 0/1, all 76 pits (~14% positive rate)
+    "horizon_salic_flag",   # salic horizon suffix (зс/сн) present; 0/1, all 76 pits
+    "horizon_ploughed_flag",  # anthropogenic disturbance (пах); 0/1, all 76 pits
+]
+
 BAND_PATHS = {
     "B3": DATA / "B3_10m.tif", "B4": DATA / "B4_10m.tif", "B8": DATA / "B8_10m.tif",
     "B11": DATA / "B11_20m.tif", "B12": DATA / "B12_20m.tif", "SCL": DATA / "SCL_10m.tif",
@@ -236,15 +254,43 @@ def sample_rs(points: pd.DataFrame) -> pd.DataFrame:
 # Main: join soil + RS + labels; recompute correlations
 # ---------------------------------------------------------------------------
 
+def load_morph_features() -> pd.DataFrame:
+    """Load per-pit morphological features derived by morph_features.py.
+
+    Returns a DataFrame with pit_id + MORPH_COLS. If morph_features_v6.csv is absent,
+    returns an empty DataFrame so that the rest of the pipeline degrades gracefully
+    (morph columns will be NaN for all pits, and the raster-dependent path can still run).
+    Coverage notes per feature are in data/canonical/morph_features_manifest.json.
+    """
+    if not MORPH_FEATURES_PATH.exists():
+        import warnings
+        warnings.warn(
+            f"morph_features_v6.csv not found at {MORPH_FEATURES_PATH}. "
+            "Run scripts/v6/morph_features.py first. Morph columns will be NaN.",
+            stacklevel=2,
+        )
+        return pd.DataFrame(columns=["pit_id"] + MORPH_COLS)
+    mf = pd.read_csv(MORPH_FEATURES_PATH, dtype=str, keep_default_na=False)
+    for col in MORPH_COLS:
+        if col in mf.columns:
+            mf[col] = to_num(mf[col])
+    keep_cols = ["pit_id"] + [c for c in MORPH_COLS if c in mf.columns]
+    return mf[keep_cols].copy()
+
+
 def main() -> None:
     labels = pd.read_csv(CANON / "saxaul_labels_v6.csv", dtype=str, keep_default_na=False)
     labels["label_weight"] = to_num(labels["label_weight"]).fillna(0.0)
     geo = labels[labels["has_coordinates"].isin(["True", "true"])].copy()
 
     soil = aggregate_soil()
+    morph = load_morph_features()
     rs = sample_rs(geo[["pit_id", "lat_dd", "lon_dd"]])
 
-    df = geo.merge(soil, on="pit_id", how="left").merge(rs, on="pit_id", how="left")
+    df = (geo
+          .merge(soil, on="pit_id", how="left")
+          .merge(morph, on="pit_id", how="left")
+          .merge(rs, on="pit_id", how="left"))
 
     # binary suitability target for correlation / training (trainable rows only)
     df["y_suitable"] = np.where(df["label_role"] == "positive", 1,
@@ -255,7 +301,7 @@ def main() -> None:
     from scipy.stats import spearmanr
     train = df[(df["label_weight"] > 0) & df["y_suitable"].notna()].copy()
     feat_cols = [c for c in df.columns
-                 if c.startswith(("top_", "prof_", "rs_", "rs30_"))
+                 if (c.startswith(("top_", "prof_", "rs_", "rs30_")) or c in MORPH_COLS)
                  and c not in ("rs_scl", "rs_prod_valid", "rs30_valid")]
     corrs = []
     for c in feat_cols:
@@ -273,6 +319,12 @@ def main() -> None:
     both = df[df["v5_zone_map"].notna() & df["v5_zone_recomputed"].notna()]
     consistent = int((both["v5_zone_map"] == both["v5_zone_recomputed"]).sum())
 
+    # Coverage stats for morph features (from morph_features_manifest.json if available)
+    morph_coverage_note = "see data/canonical/morph_features_manifest.json for per-feature coverage"
+    morph_low_cov = {c: f"{int(df[c].notna().sum())}/{len(df)}"
+                     for c in MORPH_COLS if c in df.columns
+                     and df[c].notna().sum() / len(df) < 0.60}
+
     manifest = {
         "version": "V6-ml-dataset",
         "n_rows": int(len(df)),
@@ -281,6 +333,14 @@ def main() -> None:
         "n_negative": int((df["y_suitable"] == 0).sum()),
         "n_features_soil": len([c for c in feat_cols if c.startswith(("top_", "prof_"))]),
         "n_features_rs": len([c for c in feat_cols if c.startswith(("rs_", "rs30_"))]),
+        "n_features_morph": len([c for c in feat_cols if c in MORPH_COLS]),
+        "morph_features": MORPH_COLS,
+        "morph_coverage_note": morph_coverage_note,
+        "morph_low_coverage_features": morph_low_cov,
+        "morph_missingness_policy": (
+            "Morph features with <60% non-null coverage are NOT imputed — NaN is preserved. "
+            "The ablation in spatial_validation.py uses only rows where all features are finite."
+        ),
         "rs_coverage": {
             "production_10m_valid": f"{int(df['rs_prod_valid'].sum())}/{len(df)} points",
             "legacy_30m_valid": f"{int(df['rs30_valid'].sum())}/{len(df)} points",

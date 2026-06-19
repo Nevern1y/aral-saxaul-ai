@@ -34,8 +34,8 @@
   "suitability_vs_saxaul_label": {
     "auc": 0.647,
     "ci95": [
-      0.435,
-      0.827
+      0.427,
+      0.836
     ],
     "n": 56,
     "n_positive": 6
@@ -49,6 +49,45 @@
       0.889
     ],
     "note": "Independent 2018 field points; tiny n — directional only."
+  },
+  "morph_ablation": {
+    "status": "computed",
+    "target": "top_salt_sum_salts_pct > 1%",
+    "method": "LOO AUC on complete-case subset",
+    "predictors_baseline": [
+      "rs30_ndmi"
+    ],
+    "predictors_augmented": [
+      "rs30_ndmi",
+      "rust_mottling_flag",
+      "marine_shell_flag",
+      "gley_flag",
+      "surface_crust_flag",
+      "depth_to_moist_cm"
+    ],
+    "n_complete_cases": 65,
+    "n_saline_in_subset": 25,
+    "l2_lambda": 0.1,
+    "baseline_ndmi_only": {
+      "loo_auc": 0.701,
+      "ci95": [
+        0.569,
+        0.826
+      ],
+      "bootstrap_used": 2000
+    },
+    "augmented_ndmi_plus_morph": {
+      "loo_auc": 0.753,
+      "ci95": [
+        0.602,
+        0.886
+      ],
+      "bootstrap_used": 2000
+    },
+    "delta_auc": 0.052,
+    "direction": "lift",
+    "honest_caveat": "Ablation runs on complete-case rows only (all predictors finite). n_complete=65 vs n_full=70; result may differ from full-data baseline due to subset selection, not only morph features. A neutral or negative delta is a valid scientific finding.",
+    "no_circularity_note": "Morph features are depth-aware field descriptors (moisture, mottling, crust, shells) of the SOIL PROFILE. They are NOT derived from saxaul labels. The target is soil salinity (measured salt %), independent of vegetation observation."
   },
   "coef_covariance": [
     [

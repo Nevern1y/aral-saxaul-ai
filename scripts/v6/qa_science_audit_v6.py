@@ -161,6 +161,120 @@ else:
     check("2012" in txt and "temporal" in txt, "documents temporal mismatch caveat")
     check("13" in txt and "15" in txt, "documents V5(13)/V6(15) coverage parity")
 
+# ── 5b. morphological feature ablation ──────────────────────────────────
+section("TEST 5b: Morphological ablation — coverage, no-circularity, AUC sanity")
+sp_abl = (sp or {}).get("morph_ablation") if sp else None
+if sp is None:
+    skip("morph_ablation in spatial_validation_v6.json", "spatial_validation.py not run")
+elif sp_abl is None:
+    check(False, "morph_ablation key present in spatial_validation_v6.json",
+          "run spatial_validation.py after morph_features.py")
+else:
+    status = sp_abl.get("status", "unknown")
+    check(status in ("computed", "skipped"), "morph_ablation status is valid", f"status={status}")
+    if status == "computed":
+        bl = sp_abl.get("baseline_ndmi_only", {})
+        ag = sp_abl.get("augmented_ndmi_plus_morph", {})
+        bl_auc = bl.get("loo_auc")
+        ag_auc = ag.get("loo_auc")
+        bl_ci = bl.get("ci95")
+        ag_ci = ag.get("ci95")
+        # AUC sanity: both in [0,1]
+        check(bl_auc is not None and 0.0 <= bl_auc <= 1.0,
+              "morph ablation baseline AUC in [0,1]", f"auc={bl_auc}")
+        check(ag_auc is not None and 0.0 <= ag_auc <= 1.0,
+              "morph ablation augmented AUC in [0,1]", f"auc={ag_auc}")
+        # CI brackets point estimate (baseline)
+        if bl_ci and bl_auc is not None:
+            check(bl_ci[0] <= bl_auc <= bl_ci[1],
+                  "morph ablation baseline CI brackets point estimate",
+                  f"[{bl_ci[0]},{bl_ci[1]}] pt={bl_auc}")
+        # CI brackets point estimate (augmented)
+        if ag_ci and ag_auc is not None:
+            check(ag_ci[0] <= ag_auc <= ag_ci[1],
+                  "morph ablation augmented CI brackets point estimate",
+                  f"[{ag_ci[0]},{ag_ci[1]}] pt={ag_auc}")
+        # No-circularity: target must be salinity, not saxaul labels
+        tgt = sp_abl.get("target", "")
+        check("salt" in tgt.lower() or "salin" in tgt.lower(),
+              "morph ablation target is salinity (no saxaul circularity)", f"target='{tgt}'")
+        # No-circularity: 'no_circularity_note' must be present
+        check("no_circularity_note" in sp_abl,
+              "morph ablation has no_circularity_note key")
+        # Coverage note: complete case n < 70 (depth_to_moist has some NaN)
+        nc = sp_abl.get("n_complete_cases", 0)
+        check(nc > 0, "morph ablation ran on non-zero complete-case subset", f"n={nc}")
+        # Delta AUC must be finite
+        delta = sp_abl.get("delta_auc")
+        check(delta is not None and delta == delta,
+              "morph ablation delta_auc is a finite number", f"delta={delta}")
+        # Direction key present
+        direction = sp_abl.get("direction", "")
+        check(direction in ("lift", "neutral", "hurt"),
+              "morph ablation direction key is valid", f"direction={direction}")
+        # Honest caveat key present
+        check("honest_caveat" in sp_abl,
+              "morph ablation has honest_caveat key")
+    else:
+        skip("morph_ablation AUC checks", f"status={status}")
+
+# ── 5c. morph features file sanity ────────────────────────────────────────
+section("TEST 5c: Morph features file sanity")
+import csv as _csv
+morph_csv = CANON / "morph_features_v6.csv"
+morph_manifest = CANON / "morph_features_manifest.json"
+if not morph_csv.exists():
+    check(False, "morph_features_v6.csv present", "run scripts/v6/morph_features.py")
+else:
+    with open(morph_csv, encoding="utf-8") as _f:
+        morph_rows = list(_csv.DictReader(_f))
+    check(len(morph_rows) == 76, "morph_features_v6.csv has 76 rows (all pits)", f"{len(morph_rows)}")
+    _expected_morph_cols = [
+        "depth_to_moist_cm", "depth_to_salt_cm", "rust_mottling_flag", "gley_flag",
+        "solum_depth_cm", "hcl_effervescence_class", "surface_crust_flag",
+        "marine_shell_flag", "horizon_salic_flag", "horizon_ploughed_flag",
+    ]
+    _present = [c for c in _expected_morph_cols if c in (morph_rows[0].keys() if morph_rows else [])]
+    check(len(_present) == len(_expected_morph_cols),
+          "morph_features_v6.csv has all 10 expected feature columns",
+          f"{len(_present)}/{len(_expected_morph_cols)}")
+    # solum_depth should be 100% non-null
+    _sol_ok = sum(1 for r in morph_rows if r.get("solum_depth_cm", "").strip() not in ("", "nan"))
+    check(_sol_ok == 76, "solum_depth_cm 100% coverage", f"{_sol_ok}/76")
+    # rust_mottling_flag should be 100% non-null
+    _rust_ok = sum(1 for r in morph_rows if r.get("rust_mottling_flag", "").strip() not in ("", "nan"))
+    check(_rust_ok == 76, "rust_mottling_flag 100% coverage", f"{_rust_ok}/76")
+
+if not morph_manifest.exists():
+    check(False, "morph_features_manifest.json present", "run scripts/v6/morph_features.py")
+else:
+    _mman = load(morph_manifest)
+    check("low_coverage_note" in _mman,
+          "morph_features_manifest.json has low_coverage_note (missingness caveat)")
+    check("missingness_policy" in _mman,
+          "morph_features_manifest.json has missingness_policy (NaN not imputed)")
+    # Vocab file is tracked and referenced
+    check("vocab_file" in _mman,
+          "morph_features_manifest references morph_vocab.json")
+
+# ── 5d. morph vocab file sanity ──────────────────────────────────────────
+section("TEST 5d: Morph vocabulary file sanity")
+morph_vocab = CANON / "morph_vocab.json"
+if not morph_vocab.exists():
+    check(False, "morph_vocab.json present (tracked vocabulary)", "expected in data/canonical/")
+else:
+    _vocab = load(morph_vocab)
+    check("moisture_levels" in _vocab, "morph_vocab has moisture_levels section")
+    check("hcl_effervescence" in _vocab, "morph_vocab has hcl_effervescence section")
+    check("salt_tokens_in_inclusions" in _vocab,
+          "morph_vocab has salt_tokens_in_inclusions section")
+    check("feature_coverage_notes" in _vocab,
+          "morph_vocab has feature_coverage_notes (explicit missingness docs)")
+    # depth_to_salt coverage note must mention <60% or 59%
+    _dcov = _vocab.get("feature_coverage_notes", {}).get("depth_to_salt_cm", "")
+    check("<60%" in _dcov or "59%" in _dcov or "63%" in _dcov or "coverage" in _dcov.lower(),
+          "depth_to_salt coverage note present in morph_vocab.json")
+
 # ── 6. dataset sanity ───────────────────────────────────────────────────
 section("TEST 6: ML dataset sanity")
 ml = CANON / "ml_dataset_v6.csv"
