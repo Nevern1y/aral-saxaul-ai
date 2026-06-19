@@ -275,6 +275,53 @@ else:
     check("<60%" in _dcov or "59%" in _dcov or "63%" in _dcov or "coverage" in _dcov.lower(),
           "depth_to_salt coverage note present in morph_vocab.json")
 
+# ── 5e. calibrated thresholds — honesty annotations (W6/W7/W8) ──────────
+section("TEST 5e: Calibrated thresholds — n_pos/stability/auc_raw invariants")
+cal_path = CANON / "thresholds_v6_calibrated.json"
+if not cal_path.exists():
+    check(False, "thresholds_v6_calibrated.json present", "run calibrate_thresholds.py")
+else:
+    cal = json.loads(cal_path.read_text(encoding="utf-8"))
+    ct = cal.get("calibrated_thresholds", {})
+    # W6: every entry must have n_pos and stability fields
+    missing_npos = [k for k, v in ct.items() if "n_pos" not in v]
+    check(len(missing_npos) == 0,
+          "all calibrated_thresholds entries have n_pos field",
+          f"missing in: {missing_npos}" if missing_npos else "OK")
+    missing_stab = [k for k, v in ct.items() if "stability" not in v]
+    check(len(missing_stab) == 0,
+          "all calibrated_thresholds entries have stability field",
+          f"missing in: {missing_stab}" if missing_stab else "OK")
+    # W7: every entry must have auc_raw and inverted fields
+    missing_raw = [k for k, v in ct.items() if "auc_raw" not in v]
+    check(len(missing_raw) == 0,
+          "all calibrated_thresholds entries have auc_raw field",
+          f"missing in: {missing_raw}" if missing_raw else "OK")
+    missing_inv = [k for k, v in ct.items() if "inverted" not in v]
+    check(len(missing_inv) == 0,
+          "all calibrated_thresholds entries have inverted field",
+          f"missing in: {missing_inv}" if missing_inv else "OK")
+    # W8: entries with n_pos below MIN_N_POS must have indicative_only=True
+    min_n_pos = cal.get("min_n_pos", 8)
+    for k, v in ct.items():
+        npos = v.get("n_pos", 999)
+        if npos < min_n_pos:
+            check(v.get("indicative_only") is True,
+                  f"entry with n_pos={npos} ({k[:40]}) has indicative_only=True",
+                  f"indicative_only={v.get('indicative_only')}")
+    # W7: for inverted=True entries, auc_raw must be < auc (the oriented value)
+    for k, v in ct.items():
+        if v.get("inverted"):
+            check(v.get("auc_raw", 1.0) < v.get("auc", 0.0),
+                  f"inverted entry {k[:50]}: auc_raw < auc",
+                  f"raw={v.get('auc_raw')} oriented={v.get('auc')}")
+    # top-level stability_note and min_n_pos must be present
+    check("stability_note" in cal,
+          "thresholds JSON has top-level stability_note field")
+    check("min_n_pos" in cal,
+          "thresholds JSON has top-level min_n_pos field",
+          f"min_n_pos={cal.get('min_n_pos')}")
+
 # ── 6. dataset sanity ───────────────────────────────────────────────────
 section("TEST 6: ML dataset sanity")
 ml = CANON / "ml_dataset_v6.csv"
