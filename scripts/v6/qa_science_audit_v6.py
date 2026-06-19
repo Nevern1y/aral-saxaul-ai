@@ -337,6 +337,80 @@ else:
     has_ndmi = sum(1 for r in rows if r.get("rs30_ndmi", "").strip() not in ("", "nan"))
     check(has_ndmi == 70, "all 70 rows have 30m NDMI", f"{has_ndmi}/70")
 
+
+# ── 6b. MODEL salinity benchmark — honesty + scope invariants (W1/W3/W4/W5/W9) ─
+section("TEST 6b: MODEL benchmark — pooled-AUC scope, in-AOI floor, recommendation honesty")
+bench_path = CANON / "model_v6_benchmark.json"
+bench_report = CANON / "model_v6_benchmark_report.md"
+if not bench_path.exists():
+    check(False, "model_v6_benchmark.json present", "run scripts/v6/benchmark_salinity_model.py")
+else:
+    bench = load(bench_path)
+    rec = bench.get("recommendation", {})
+    models = {m.get("id"): m for m in bench.get("models", [])}
+    # Recommendation block present + internally consistent
+    check("recommended_model_id" in rec, "benchmark records a recommended_model_id",
+          str(rec.get("recommended_model_id")))
+    check("cascade_needed" in rec, "benchmark records cascade_needed flag",
+          str(rec.get("cascade_needed")))
+    check(rec.get("shipped_model_unchanged") == (not rec.get("cascade_needed")),
+          "shipped_model_unchanged is consistent with cascade_needed")
+    # W1: pooled spatial AUC re-measured and recorded for the baseline
+    m0 = models.get("M0", {})
+    pooled = m0.get("pooled_spatial_auc")
+    perblk = m0.get("mean_per_block_spatial_auc")
+    check(pooled is not None and 0.0 <= pooled <= 1.0,
+          "baseline pooled spatial AUC recorded (W1 regional-drift scope)", f"pooled={pooled}")
+    check(perblk is not None and 0.0 <= perblk <= 1.0,
+          "baseline per-block spatial AUC recorded (honest local metric)", f"per_block={perblk}")
+    # Baseline LOO AUC must match the shipped salinity model (consistency with TEST 1/2)
+    if sal is not None:
+        shipped_auc = sal.get("training", {}).get("loo_auc") if isinstance(sal.get("training"), dict) else None
+        if shipped_auc is not None and m0.get("loo_auc") is not None:
+            check(abs(m0["loo_auc"] - shipped_auc) <= 0.02,
+                  "benchmark M0 LOO AUC matches shipped salinity model (protocol consistency)",
+                  f"bench={m0.get('loo_auc')} shipped={shipped_auc}")
+    # Every model carries a held-out LOO CI (no point estimate without CI)
+    for mid, m in models.items():
+        ci = m.get("loo_auc_ci95")
+        check(isinstance(ci, list) and len(ci) == 2 and ci[0] <= m.get("loo_auc", -1) <= ci[1],
+              f"{mid}: LOO AUC within its bootstrap CI (CI never dropped)", f"auc={m.get('loo_auc')} ci={ci}")
+    # W4/W5: in-AOI vs out-of-AOI reported separately, derived from the 1960 footprint (not the all-True column)
+    aoi = bench.get("aoi_split", {})
+    n_in = aoi.get("n_in_aoi")
+    n_out = aoi.get("n_out_of_aoi")
+    check(n_in is not None and n_out is not None and (n_in + n_out) == bench.get("n_total", 70),
+          "in-AOI/out-of-AOI split recorded and sums to n_total (W4/W5)", f"in={n_in} out={n_out}")
+    check(n_in is not None and 0 < n_in < bench.get("n_total", 70),
+          "in-AOI split is a true subset, not the all-True in_aoi column (W4)", f"n_in={n_in}")
+    check("aoi_stratified_auc" in m0,
+          "baseline reports AOI-stratified AUC (in-AOI test skill separated from training)")
+    # IN-AOI FLOOR (W5): if the in-AOI AUC is numeric, it must clear a stated floor
+    in_aoi_floor = 0.5
+    m0_aoi = m0.get("aoi_stratified_auc", {})
+    in_aoi_auc = m0_aoi.get("in_aoi")
+    if isinstance(in_aoi_auc, (int, float)):
+        check(in_aoi_auc >= in_aoi_floor,
+              f"baseline in-AOI LOO AUC >= floor {in_aoi_floor} (W5 in-AOI skill gate)",
+              f"in_aoi_auc={in_aoi_auc}")
+    else:
+        skip("in-AOI AUC floor", f"in-AOI AUC not numeric (small-n): {in_aoi_auc}")
+    # W3: texture-stratified AUC present (single-axis residual bias quantified)
+    check("texture_stratified_auc" in m0, "baseline reports texture-stratified AUC (W3)")
+    # W9: lambda recorded per model (sensitivity considered, not a single hidden lambda)
+    check(all("best_lam" in m for m in models.values()),
+          "every benchmarked model records its selected lambda (W9)")
+    # Report prose and JSON must agree on the recommendation (no desync)
+    if bench_report.exists():
+        rtext = bench_report.read_text(encoding="utf-8")
+        rid = rec.get("recommended_model_id", "")
+        casc = str(rec.get("cascade_needed")).lower()
+        check(f"cascade_needed = {casc}" in rtext,
+              "benchmark report prose agrees with JSON on cascade_needed", f"cascade_needed={casc}")
+        check(rid and rid in rtext,
+              "benchmark report prose names the JSON-recommended model", f"id={rid}")
+
+
 # ── verdict ─────────────────────────────────────────────────────────────
 print(f"\n{'=' * 70}")
 print("  V6 SCIENCE AUDIT SUMMARY")

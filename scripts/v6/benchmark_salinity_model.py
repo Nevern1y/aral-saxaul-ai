@@ -58,6 +58,7 @@ SAL_MODEL = MODELS / "salinity_v6_logit.json"
 AOI_GEOJSON = BASE / "outputs" / "aoi" / "aral_sea_1960.geojson"
 
 OUT_REPORT = CANON / "model_v6_benchmark_report.md"
+OUT_JSON = CANON / "model_v6_benchmark.json"
 
 BLOCK_KM = 20.0
 N_BOOT = 2000
@@ -523,6 +524,89 @@ def evaluate_region_model(df: pd.DataFrame, rng: np.random.Generator,
 
 # ── main ──────────────────────────────────────────────────────────────────────
 
+def decide_recommendation(results: list) -> dict:
+    """Deterministic, self-contained recommendation (mirrors write_report's rule).
+
+    Returns a machine-readable dict for model_v6_benchmark.json so QA invariants
+    read JSON, never prose. Same thresholds as the report: a candidate only wins
+    if, on its OWN complete-case subset, LOO AUC beats the same-subset NDMI-only
+    baseline by > 0.02, its CI lower bound is strictly higher, and per-block
+    spatial AUC does not drop more than 0.05 below M0.
+    """
+    m0 = next(r for r in results if r["name"].startswith("M0"))
+
+    def _pb_ok(cand):
+        pb_m0 = m0["mean_per_block_spatial_auc"]
+        pb_cand = cand["mean_per_block_spatial_auc"]
+        return (pb_cand is not None and not (pb_cand != pb_cand) and
+                pb_m0 is not None and pb_cand >= pb_m0 - 0.05)
+
+    def _better(cand):
+        ssb = cand.get("same_subset_baseline")
+        if ssb is None:
+            return (cand["loo_auc"] > m0["loo_auc"] + 0.02 and
+                    cand["loo_auc_ci95"][0] > m0["loo_auc_ci95"][0] and _pb_ok(cand))
+        delta = cand["loo_auc"] - ssb["loo_auc"]
+        ci_gap = cand["loo_auc_ci95"][0] - ssb["loo_auc_ci95"][0]
+        return delta > 0.02 and ci_gap > 0.0 and _pb_ok(cand)
+
+    winner = m0
+    for cand in [r for r in results if not r["name"].startswith("M0")]:
+        if _better(cand):
+            winner = cand
+            break
+
+    cascade_needed = winner is not m0
+    return {
+        "recommended_model": winner["name"],
+        "recommended_model_id": winner["name"].split()[0],
+        "cascade_needed": cascade_needed,
+        "shipped_model_unchanged": not cascade_needed,
+        "baseline_loo_auc": m0["loo_auc"],
+        "baseline_loo_auc_ci95": m0["loo_auc_ci95"],
+        "baseline_pooled_spatial_auc": m0["pooled_spatial_auc"],
+        "baseline_mean_per_block_spatial_auc": m0["mean_per_block_spatial_auc"],
+    }
+
+
+def write_json(results: list, recommendation: dict, n_in_aoi: int,
+               n_out_aoi: int, aoi_source: str) -> None:
+    """Emit machine-readable benchmark JSON for QA invariants + downstream consumers."""
+    payload = {
+        "schema": "v6-salinity-benchmark/1",
+        "generated_by": "scripts/v6/benchmark_salinity_model.py",
+        "seed": SEED,
+        "bootstrap_resamples": N_BOOT,
+        "n_total": 70,
+        "aoi_split": {
+            "source": aoi_source,
+            "n_in_aoi": n_in_aoi,
+            "n_out_of_aoi": n_out_aoi,
+            "note": ("in_aoi column is True for all 70 rows and is NOT the seabed "
+                     "split; in-AOI derived geometrically from the 1960 Aral footprint"),
+        },
+        "recommendation": recommendation,
+        "models": [
+            {
+                "id": r["name"].split()[0],
+                "name": r["name"],
+                "predictors": r["predictors"],
+                "n": r["n"],
+                "n_saline": r["n_saline"],
+                "loo_auc": r["loo_auc"],
+                "loo_auc_ci95": r["loo_auc_ci95"],
+                "pooled_spatial_auc": r["pooled_spatial_auc"],
+                "mean_per_block_spatial_auc": r["mean_per_block_spatial_auc"],
+                "best_lam": r["best_lam"],
+                "aoi_stratified_auc": r["aoi_stratified_auc"],
+                "texture_stratified_auc": r["texture_stratified_auc"],
+            }
+            for r in results
+        ],
+    }
+    OUT_JSON.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
 def main() -> None:
     rng = np.random.default_rng(SEED)
     df = pd.read_csv(ML)
@@ -598,6 +682,9 @@ def main() -> None:
     # ── write report ──────────────────────────────────────────────────────────
     write_report(results, in_aoi_full, n_in_aoi, n_out_aoi, aoi_note)
     print(f"\nReport written to: {OUT_REPORT}")
+    recommendation = decide_recommendation(results)
+    write_json(results, recommendation, n_in_aoi, n_out_aoi, aoi_source)
+    print(f"JSON written to: {OUT_JSON}")
 
 
 def _ci_str(ci):
