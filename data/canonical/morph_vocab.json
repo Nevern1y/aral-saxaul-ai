@@ -1,0 +1,92 @@
+{
+  "_comment": "Controlled-vocabulary mapping for morphological pit descriptors (cols 6-11 of morph_*.csv). Used by scripts/v6/morph_features.py. DO NOT hand-edit outputs — edit this file and regenerate. Version: V6-morph-vocab-1.0.",
+
+  "moisture_levels": {
+    "_comment": "Ordered from dry (1) to saturated (6). Used to find depth_to_moist_cm (first layer >= level 3).",
+    "1_dry": ["сухой", "сухая", "сухая/свежая"],
+    "2_slightly_moist": ["слабоувлажненный", "слабоувлажненная", "слабоувлажненый", "почти влажный"],
+    "3_fresh": ["свежий", "свежая"],
+    "4_moist": ["влажный", "влажная", "увлажненный", "увлажненная", "увлажненный (влажный)", "сухая/увлажненная", "после дождя"],
+    "5_wet_moist": ["влажный (почти сырой)", "влажный после дождя", "влажная после дождя", "влажный на дне сырой"],
+    "6_saturated": ["сырой", "сырой но уже мокрый", "мокрый"],
+    "0_missing": ["н/д"]
+  },
+
+  "moisture_threshold_for_depth": {
+    "_comment": "depth_to_moist_cm = top depth of first layer with moisture_level >= this value.",
+    "level": 3,
+    "label": "fresh_or_wetter"
+  },
+
+  "hcl_effervescence": {
+    "_comment": "Maps Вскипание от HCl text to ordered class: surface=2, weak=1, none=0, missing=null.",
+    "surface": ["с поверхности"],
+    "weak": ["слабо вскипает"],
+    "none": ["не вскипает"],
+    "missing": ["н/д"]
+  },
+
+  "salt_tokens_in_inclusions": {
+    "_comment": "Any of these substrings in col10 (Наличие включений) mark a salt-bearing layer. Used for depth_to_salt_cm. Deliberately EXCLUDES carb-only tokens (карбон/карбонаты) to avoid conflating carbonates with soluble salts.",
+    "tokens": [
+      "соли", "соль", "солей", "солям",
+      "жилки", "прожилки", "прожилками", "выцветы",
+      "блестки", "блестками", "крапинки",
+      "друзы", "пятна солей", "пятнышки солей",
+      "кристалл", "корка солей", "солевая"
+    ],
+    "exclude_tokens": [
+      "без видимых солей", "видимых солей нет",
+      "без корешков", "карбонаты и соли"
+    ],
+    "_note_exclude": "карбонаты и соли is excluded because it is a mixed phrase where salt presence is ambiguous quantity-wise — the carb-only rows dominate. depth_to_salt is sourced from unambiguous salt mentions."
+  },
+
+  "shell_tokens_in_inclusions": {
+    "_comment": "Any of these substrings in col10 mark marine shell presence (marine_shell_flag).",
+    "tokens": ["ракуш", "ракушки", "ракушечник"]
+  },
+
+  "rust_tokens_in_color": {
+    "_comment": "Substrings in col7 (Цвет почвы) that indicate rust mottling — redox evidence of seasonal waterlogging. Used for rust_mottling_flag (any layer in pit).",
+    "tokens": ["ржав"]
+  },
+
+  "gley_tokens_in_color": {
+    "_comment": "Substrings in col7 indicating gleying (reductive grey-blue colours).",
+    "tokens": ["сиз"]
+  },
+
+  "gley_suffix_in_horizon": {
+    "_comment": "Substring in col6 (Индекс горизонта) indicating gley horizon suffix.",
+    "tokens": ["g"]
+  },
+
+  "salic_suffix_in_horizon": {
+    "_comment": "Horizon suffix codes for salic horizon (соленосный). зс = zasolen (salic), сн = solonetsy.",
+    "tokens": ["зс", "сн"]
+  },
+
+  "ploughed_suffix_in_horizon": {
+    "_comment": "Horizon suffix indicating anthropogenic ploughing.",
+    "tokens": ["пах", "п"]
+  },
+
+  "crust_tokens_in_structure": {
+    "_comment": "Substrings in col8 (Структура и сложение) for the top layer that indicate a surface crust (корка). Used for surface_crust_flag.",
+    "tokens": ["корк"]
+  },
+
+  "feature_coverage_notes": {
+    "depth_to_moist_cm": "73% coverage (56/76 pits); remainder have only dry or missing moisture — treated as NaN, NOT imputed.",
+    "depth_to_salt_cm": "59% coverage (45/76 pits); remainder have no salt mention in inclusions — treated as NaN, NOT imputed. Coverage <60%: missingness caveat required.",
+    "rust_mottling_flag": "56% coverage (43/76 pits have rust mention); 0 = none in profile, 1 = rust in any layer. Coverage <60%: missingness caveat required.",
+    "gley_flag": "Derived from color (siz*) and horizon suffix (g); 56% co-occurring with rust. Reports presence in any layer.",
+    "solum_depth_cm": "100% coverage — max bottom depth per pit.",
+    "hcl_effervescence_class": "~96% non-null (HCl recorded for nearly all pits).",
+    "surface_crust_flag": "High coverage; top layer structure recorded for most pits.",
+    "marine_shell_flag": "14% coverage (11/76 pits); low coverage — presence-only flag, absence is not confirmed absence.",
+    "horizon_salic_flag": "100% derivable (horizon codes present for all layers).",
+    "horizon_ploughed_flag": "100% derivable (horizon codes present for all layers)."
+  }
+}

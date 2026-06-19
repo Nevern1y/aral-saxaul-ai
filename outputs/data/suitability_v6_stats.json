@@ -1,0 +1,52 @@
+{
+  "version": "V6-suitability-index",
+  "crs": "EPSG:4326",
+  "source_stack": "feature_stack_30m.vrt",
+  "resolution_deg": 0.00026949458523585647,
+  "salinity_model": {
+    "loo_auc": 0.682,
+    "n": 70,
+    "saline_cut_ndmi": -0.1027,
+    "strong_cut_ndmi": -0.084
+  },
+  "veg_msavi_cut": 0.15,
+  "training_support_ndmi": [
+    -0.1737,
+    0.4092
+  ],
+  "aoi": "aoi_mask_v5.tif (1960 Aral footprint; same study area as V5.1)",
+  "grid": {
+    "height": 11197,
+    "width": 14844,
+    "total_pixels": 166208268
+  },
+  "aoi_pixels": 88302423,
+  "valid_pixels": 85555004,
+  "valid_fraction_of_aoi": 0.9689,
+  "extrapolated_pixels": 5181184,
+  "extrapolated_fraction_of_valid": 0.0606,
+  "water_semantics_note": "Water/NoData here is mostly outside-AOI + NDMI-invalid; the 30m stack has no Sentinel-2 SCL band, so V5's SCL-based water masking is not reproduced. Wet saline playa that V5 hid as water surfaces here as high-NDMI strong-salinity (class 4).",
+  "zone_pixels": {
+    "0": 80653264,
+    "1": 4529434,
+    "3": 6154816,
+    "4": 49333714,
+    "10": 25537040
+  },
+  "zone_area_ha": {
+    "0": 5098455.8,
+    "1": 284802.2,
+    "3": 388647.5,
+    "4": 3119778.0,
+    "10": 1608922.6
+  },
+  "total_area_ha": 10500606.1,
+  "mean_suitability_bare_land": 0.5876,
+  "class_names": {
+    "0": "Water / NoData",
+    "1": "Candidate (low salinity)",
+    "3": "Moderate salinity risk",
+    "4": "Strong salinity risk",
+    "10": "Existing vegetation"
+  }
+}

@@ -56,3 +56,9 @@ outputs/aoi/*.geojson
 # OS
 Thumbs.db
 .DS_Store
+outputs/tmp/
+
+# V6: large source docx stays out of git (22 MB)
+*.docx
+# V6 interim extraction is reproducible from scripts/v6
+data/interim/

@@ -1,0 +1,129 @@
+{
+  "version": "V6-ml-dataset",
+  "n_rows": 70,
+  "n_trainable": 56,
+  "n_positive": 6,
+  "n_negative": 50,
+  "n_features_soil": 50,
+  "n_features_rs": 14,
+  "n_features_morph": 10,
+  "morph_features": [
+    "depth_to_moist_cm",
+    "depth_to_salt_cm",
+    "rust_mottling_flag",
+    "gley_flag",
+    "solum_depth_cm",
+    "hcl_effervescence_class",
+    "surface_crust_flag",
+    "marine_shell_flag",
+    "horizon_salic_flag",
+    "horizon_ploughed_flag"
+  ],
+  "morph_coverage_note": "see data/canonical/morph_features_manifest.json for per-feature coverage",
+  "morph_low_coverage_features": {},
+  "morph_missingness_policy": "Morph features with <60% non-null coverage are NOT imputed — NaN is preserved. The ablation in spatial_validation.py uses only rows where all features are finite.",
+  "rs_coverage": {
+    "production_10m_valid": "14/70 points",
+    "legacy_30m_valid": "70/70 points",
+    "note": "The production 2025 spring S2 composite is ~54% NoData over the Syrdarya delta, so only ~14/70 ground-truth points fall on valid 10m pixels. The legacy 30m stack covers all points and is used for analysis. RECOMMENDED FUTURE STEP: re-fetch a gap-free annual cloud-masked S2 median to lift 10m coverage."
+  },
+  "rs_zone_consistency": "14/14 sampled points match production map",
+  "top_correlations": [
+    {
+      "feature": "prof_caso4_pct",
+      "spearman_rho": 0.466,
+      "p_value": 0.175,
+      "n": 10
+    },
+    {
+      "feature": "top_caco3_pct",
+      "spearman_rho": 0.393,
+      "p_value": 0.0469,
+      "n": 26
+    },
+    {
+      "feature": "prof_caco3_pct",
+      "spearman_rho": 0.336,
+      "p_value": 0.0805,
+      "n": 28
+    },
+    {
+      "feature": "prof_salt_cl_pct",
+      "spearman_rho": -0.265,
+      "p_value": 0.0659,
+      "n": 49
+    },
+    {
+      "feature": "top_salt_cl_pct",
+      "spearman_rho": -0.265,
+      "p_value": 0.0659,
+      "n": 49
+    },
+    {
+      "feature": "rs30_ndwi",
+      "spearman_rho": -0.254,
+      "p_value": 0.0593,
+      "n": 56
+    },
+    {
+      "feature": "top_exch_sum",
+      "spearman_rho": -0.213,
+      "p_value": 0.1303,
+      "n": 52
+    },
+    {
+      "feature": "top_exch_na",
+      "spearman_rho": -0.213,
+      "p_value": 0.1303,
+      "n": 52
+    },
+    {
+      "feature": "top_sand_pct",
+      "spearman_rho": 0.209,
+      "p_value": 0.1594,
+      "n": 47
+    },
+    {
+      "feature": "prof_sand_pct",
+      "spearman_rho": 0.209,
+      "p_value": 0.1594,
+      "n": 47
+    },
+    {
+      "feature": "prof_hygroscopic_water_pct",
+      "spearman_rho": -0.207,
+      "p_value": 0.1726,
+      "n": 45
+    },
+    {
+      "feature": "top_hygroscopic_water_pct",
+      "spearman_rho": -0.207,
+      "p_value": 0.1726,
+      "n": 45
+    },
+    {
+      "feature": "depth_to_salt_cm",
+      "spearman_rho": 0.205,
+      "p_value": 0.231,
+      "n": 36
+    },
+    {
+      "feature": "rs30_si",
+      "spearman_rho": -0.204,
+      "p_value": 0.1323,
+      "n": 56
+    },
+    {
+      "feature": "prof_exch_sum",
+      "spearman_rho": -0.201,
+      "p_value": 0.154,
+      "n": 52
+    }
+  ],
+  "temporal_mismatch_note": "soil/vegetation observed 2012-2014 vs Sentinel-2 composite 2025; correlations are indicative, not contemporaneous",
+  "outputs": {
+    "ml_dataset": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\data\\canonical\\ml_dataset_v6.csv",
+    "correlations_vs_saxaul": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\data\\canonical\\ml_correlations_v6.csv",
+    "correlations_vs_salinity_morph": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\data\\canonical\\morph_salinity_correlations_v6.csv"
+  }
+}

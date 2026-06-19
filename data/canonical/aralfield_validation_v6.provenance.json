@@ -1,0 +1,136 @@
+{
+  "artifact": "data/canonical/aralfield_validation_v6.csv",
+  "description": "Independent AralField 2018 Haloxylon validation set used by Phase 6 (train_suitability_model.py) and Phase 7 (spatial_validation.py) to report the independent AralField AUC. 11 field points.",
+  "status": "frozen external input (field columns) + script-regenerable RS columns. Previously the ndmi/msavi columns were sampled by a lost process (RISK-1, CODE_ENGINEERING_AUDIT R1); they are now regenerable byte-identically by scripts/v6/build_aralfield_validation.py --rasters.",
+  "field_survey": {
+    "source": "AralField 2018 Haloxylon field survey (independent of the lab/saxaul-label data)",
+    "n_points": 11,
+    "columns": [
+      "id",
+      "lon",
+      "lat",
+      "haloxylon",
+      "veg",
+      "note"
+    ],
+    "note": "These columns are the FROZEN field observations (coordinates, Haloxylon presence, vegetation, note); they are not derivable from rasters and are the committed external input. ndmi/msavi are sampled from the 30m stack below.",
+    "records": [
+      {
+        "id": "S124",
+        "lon": "60.893604",
+        "lat": "45.588539",
+        "haloxylon": "1",
+        "veg": "Haloxylon,  herbs",
+        "note": "Former sea bed, now planred with Haloxylon well fi"
+      },
+      {
+        "id": "S125",
+        "lon": "60.912059",
+        "lat": "45.608637",
+        "haloxylon": "0",
+        "veg": "nan",
+        "note": "No vegetation, former sea bed, moving sands on it,"
+      },
+      {
+        "id": "S126",
+        "lon": "60.928608",
+        "lat": "45.624813",
+        "haloxylon": "1",
+        "veg": "Small Haloxylon,   Sarsazan",
+        "note": "Former sea bed, now planred "
+      },
+      {
+        "id": "S127",
+        "lon": "60.9836",
+        "lat": "45.648156",
+        "haloxylon": "0",
+        "veg": "Shengel",
+        "note": "nan"
+      },
+      {
+        "id": "S128",
+        "lon": "60.987777",
+        "lat": "45.656316",
+        "haloxylon": "0",
+        "veg": "Tamarix, Yantak",
+        "note": "Near the water source at protected area"
+      },
+      {
+        "id": "S129",
+        "lon": "61.018802",
+        "lat": "45.657462",
+        "haloxylon": "1",
+        "veg": "Haloxylon",
+        "note": "Former sea bed, now grey takyr with small sea shel"
+      },
+      {
+        "id": "S130",
+        "lon": "61.213133",
+        "lat": "45.725247",
+        "haloxylon": "0",
+        "veg": "Sarsazan (saline shrub vegetation), herb",
+        "note": "Takyr with few vegetation, very sparse"
+      },
+      {
+        "id": "S131",
+        "lon": "61.221228",
+        "lat": "45.754821",
+        "haloxylon": "0",
+        "veg": "Artemisia, other herbs",
+        "note": "Various herbaceous vegetation, Air temperature is "
+      },
+      {
+        "id": "S132",
+        "lon": "61.257944",
+        "lat": "45.815325",
+        "haloxylon": "0",
+        "veg": "Herbaceous vegetation",
+        "note": "Abandoned cropland (very old)"
+      },
+      {
+        "id": "S133",
+        "lon": "61.267256",
+        "lat": "45.847397",
+        "haloxylon": "0",
+        "veg": "Tamarix, herbs",
+        "note": "Plain over lakeshore, gw level is high, Various he"
+      },
+      {
+        "id": "S134",
+        "lon": "61.268779",
+        "lat": "45.945191",
+        "haloxylon": "0",
+        "veg": "Old and dried vegetation affected by hig",
+        "note": "Former Sorkol lake bed, very saline, solonchak"
+      }
+    ]
+  },
+  "remote_sensing_sampling": {
+    "columns": {
+      "ndmi": "band 1 of the 30m feature stack",
+      "msavi": "band 2 of the 30m feature stack"
+    },
+    "method": "nearest pixel via rasterio src.index(lon, lat), single-pixel window read; the first tile that yields a finite value wins (first-valid-wins).",
+    "tile_order": [
+      "feature_stack_30m_tile0_redo.tif",
+      "feature_stack_30m_tile1.tif"
+    ],
+    "tiles": {
+      "feature_stack_30m_tile0_redo.tif": {
+        "sha256": "5f797be1956c71038dc3754fdaed4b28c916718f969c6dbc9ae1199acf0a69fa",
+        "bytes": 675410621
+      },
+      "feature_stack_30m_tile1.tif": {
+        "sha256": "72f09403001119f849d00d414a1a6d933a0734e0140951466cdf0d44888575fb",
+        "bytes": 3669916529
+      }
+    },
+    "serialization": "pandas DataFrame.to_csv(index=False, lineterminator='\r\n'); RS columns widened float32->float64 before write; missing values rendered as 'nan'."
+  },
+  "expected_output": {
+    "sha256": "eb981c3fafa7ff00726cea04c4bd0ef717cd577f6543c1a460db0cab9a906990",
+    "bytes": 1489
+  },
+  "regenerate": "python scripts/v6/build_aralfield_validation.py --rasters",
+  "verify_only": "python scripts/v6/build_aralfield_validation.py"
+}

@@ -1,0 +1,11 @@
+feature,spearman_rho_vs_salinity,p_value,n,coverage_pct
+marine_shell_flag,0.496,0.0,70,100.0
+rust_mottling_flag,0.492,0.0,70,100.0
+surface_crust_flag,0.457,0.0001,70,100.0
+gley_flag,0.445,0.0001,70,100.0
+depth_to_moist_cm,0.404,0.0008,65,92.9
+hcl_effervescence_class,-0.207,0.1263,56,80.0
+horizon_ploughed_flag,-0.192,0.1106,70,100.0
+horizon_salic_flag,-0.181,0.134,70,100.0
+depth_to_salt_cm,-0.168,0.2875,42,60.0
+solum_depth_cm,0.067,0.581,70,100.0

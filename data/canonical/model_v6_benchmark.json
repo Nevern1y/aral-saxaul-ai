@@ -1,0 +1,142 @@
+{
+  "schema": "v6-salinity-benchmark/1",
+  "generated_by": "scripts/v6/benchmark_salinity_model.py",
+  "seed": 42,
+  "bootstrap_resamples": 2000,
+  "n_total": 70,
+  "aoi_split": {
+    "source": "aral_sea_1960.geojson (point-in-polygon)",
+    "n_in_aoi": 15,
+    "n_out_of_aoi": 55,
+    "note": "in_aoi column is True for all 70 rows and is NOT the seabed split; in-AOI derived geometrically from the 1960 Aral footprint"
+  },
+  "recommendation": {
+    "recommended_model": "M0 baseline (NDMI only — current shipped model)",
+    "recommended_model_id": "M0",
+    "cascade_needed": false,
+    "shipped_model_unchanged": true,
+    "baseline_loo_auc": 0.682,
+    "baseline_loo_auc_ci95": [
+      0.556,
+      0.802
+    ],
+    "baseline_pooled_spatial_auc": 0.385,
+    "baseline_mean_per_block_spatial_auc": 0.792
+  },
+  "models": [
+    {
+      "id": "M0",
+      "name": "M0 baseline (NDMI only — current shipped model)",
+      "predictors": [
+        "rs30_ndmi"
+      ],
+      "n": 70,
+      "n_saline": 27,
+      "loo_auc": 0.682,
+      "loo_auc_ci95": [
+        0.556,
+        0.802
+      ],
+      "pooled_spatial_auc": 0.385,
+      "mean_per_block_spatial_auc": 0.792,
+      "best_lam": 0.1,
+      "aoi_stratified_auc": {
+        "in_aoi": 0.614,
+        "out_of_aoi": 0.671,
+        "n_in_aoi": 15,
+        "n_out_of_aoi": 55
+      },
+      "texture_stratified_auc": {
+        "sand_rich (sand>40%)": 0.866,
+        "clay_rich (clay>30%)": "N/A (too few)"
+      }
+    },
+    {
+      "id": "M1",
+      "name": "M1 texture (NDMI + top_sand_pct + top_clay_pct)",
+      "predictors": [
+        "rs30_ndmi",
+        "top_sand_pct",
+        "top_clay_pct"
+      ],
+      "n": 55,
+      "n_saline": 21,
+      "loo_auc": 0.794,
+      "loo_auc_ci95": [
+        0.67,
+        0.908
+      ],
+      "pooled_spatial_auc": 0.648,
+      "mean_per_block_spatial_auc": 0.657,
+      "best_lam": 10.0,
+      "aoi_stratified_auc": {
+        "in_aoi": 1.0,
+        "out_of_aoi": 0.81,
+        "n_in_aoi": 10,
+        "n_out_of_aoi": 45
+      },
+      "texture_stratified_auc": {
+        "sand_rich (sand>40%)": 0.817,
+        "clay_rich (clay>30%)": "N/A (too few)"
+      }
+    },
+    {
+      "id": "M2",
+      "name": "M2 texture+Cl (NDMI + top_sand_pct + top_clay_pct + top_salt_cl_pct)",
+      "predictors": [
+        "rs30_ndmi",
+        "top_sand_pct",
+        "top_clay_pct",
+        "top_salt_cl_pct"
+      ],
+      "n": 48,
+      "n_saline": 21,
+      "loo_auc": 0.868,
+      "loo_auc_ci95": [
+        0.725,
+        0.981
+      ],
+      "pooled_spatial_auc": 0.774,
+      "mean_per_block_spatial_auc": 0.667,
+      "best_lam": 0.1,
+      "aoi_stratified_auc": {
+        "in_aoi": 0.938,
+        "out_of_aoi": 0.886,
+        "n_in_aoi": 10,
+        "n_out_of_aoi": 38
+      },
+      "texture_stratified_auc": {
+        "sand_rich (sand>40%)": 0.756,
+        "clay_rich (clay>30%)": "N/A (too few)"
+      }
+    },
+    {
+      "id": "M3",
+      "name": "M3 region-aware (NDMI + in-AOI dummy): n_in=15 n_out=55",
+      "predictors": [
+        "rs30_ndmi",
+        "in_aoi_dummy (geometric, not from labels)"
+      ],
+      "n": 70,
+      "n_saline": 27,
+      "loo_auc": 0.697,
+      "loo_auc_ci95": [
+        0.572,
+        0.818
+      ],
+      "pooled_spatial_auc": 0.448,
+      "mean_per_block_spatial_auc": 0.804,
+      "best_lam": 3.0,
+      "aoi_stratified_auc": {
+        "in_aoi": 0.341,
+        "out_of_aoi": 0.617,
+        "n_in_aoi": 15,
+        "n_out_of_aoi": 55
+      },
+      "texture_stratified_auc": {
+        "sand_rich (sand>40%)": 0.866,
+        "clay_rich (clay>30%)": "N/A (too few)"
+      }
+    }
+  ]
+}

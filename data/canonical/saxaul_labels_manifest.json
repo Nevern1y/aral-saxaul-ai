@@ -1,0 +1,80 @@
+{
+  "version": "V6-saxaul-labels",
+  "n_profiles": 76,
+  "status_counts": {
+    "absent_recorded": 64,
+    "sparse_suppressed": 5,
+    "planted_failed": 2,
+    "present_dominant": 2,
+    "present_nearby": 2,
+    "present": 1
+  },
+  "role_counts": {
+    "negative": 52,
+    "exclude": 14,
+    "positive": 8,
+    "uncertain": 2
+  },
+  "strength_counts": {
+    "weak": 54,
+    "": 16,
+    "strong": 6
+  },
+  "confidence_counts": {
+    "low": 67,
+    "medium": 5,
+    "high": 4
+  },
+  "source_counts": {
+    "morphology": 64,
+    "narrative": 10,
+    "both": 2
+  },
+  "georeferenced": {
+    "n": 70,
+    "role_counts": {
+      "negative": 50,
+      "exclude": 12,
+      "positive": 6,
+      "uncertain": 2
+    }
+  },
+  "trainable_georef": {
+    "n": 56,
+    "positives": [
+      "12/14",
+      "14/13",
+      "23/14",
+      "24/13",
+      "4А/12",
+      "8А/12"
+    ],
+    "negatives_strong": [
+      "08/14",
+      "13/13",
+      "24/14"
+    ]
+  },
+  "positives": [
+    "12/14",
+    "13/14",
+    "14/13",
+    "23/14",
+    "24/13",
+    "25/14",
+    "4А/12",
+    "8А/12"
+  ],
+  "negatives_strong": [
+    "08/14",
+    "13/13",
+    "24/14"
+  ],
+  "uncertain": [
+    "28/13",
+    "29/13"
+  ],
+  "n_trainable": 60,
+  "n_narrative_blocks": 76,
+  "output": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\data\\canonical\\saxaul_labels_v6.csv"
+}

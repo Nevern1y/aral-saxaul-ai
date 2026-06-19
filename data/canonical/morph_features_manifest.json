@@ -1,0 +1,78 @@
+{
+  "version": "V6-morph-features-1.0",
+  "vocab_file": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\data\\canonical\\morph_vocab.json",
+  "n_pits": 76,
+  "n_layers": 392,
+  "n_feature_rows": 76,
+  "features": [
+    "depth_to_moist_cm",
+    "depth_to_salt_cm",
+    "rust_mottling_flag",
+    "gley_flag",
+    "solum_depth_cm",
+    "hcl_effervescence_class",
+    "surface_crust_flag",
+    "marine_shell_flag",
+    "horizon_salic_flag",
+    "horizon_ploughed_flag"
+  ],
+  "coverage": {
+    "depth_to_moist_cm": {
+      "n_non_null": 71,
+      "n_total": 76,
+      "coverage_pct": 93.4
+    },
+    "depth_to_salt_cm": {
+      "n_non_null": 48,
+      "n_total": 76,
+      "coverage_pct": 63.2
+    },
+    "rust_mottling_flag": {
+      "n_non_null": 76,
+      "n_total": 76,
+      "coverage_pct": 100.0
+    },
+    "gley_flag": {
+      "n_non_null": 76,
+      "n_total": 76,
+      "coverage_pct": 100.0
+    },
+    "solum_depth_cm": {
+      "n_non_null": 76,
+      "n_total": 76,
+      "coverage_pct": 100.0
+    },
+    "hcl_effervescence_class": {
+      "n_non_null": 61,
+      "n_total": 76,
+      "coverage_pct": 80.3
+    },
+    "surface_crust_flag": {
+      "n_non_null": 76,
+      "n_total": 76,
+      "coverage_pct": 100.0
+    },
+    "marine_shell_flag": {
+      "n_non_null": 76,
+      "n_total": 76,
+      "coverage_pct": 100.0
+    },
+    "horizon_salic_flag": {
+      "n_non_null": 76,
+      "n_total": 76,
+      "coverage_pct": 100.0
+    },
+    "horizon_ploughed_flag": {
+      "n_non_null": 76,
+      "n_total": 76,
+      "coverage_pct": 100.0
+    }
+  },
+  "low_coverage_features": {},
+  "low_coverage_note": "Features with <60% coverage have NaN where the descriptor is absent. These are NOT imputed — missingness is honest and carried as NaN into ml_dataset_v6.csv and any model that uses them. Ablation must account for the reduced sample size when these features are included.",
+  "missingness_policy": "All depth features (depth_to_moist_cm, depth_to_salt_cm) and flag features with low positive-rate (marine_shell_flag) remain NaN/0 as observed. No mean/mode imputation is performed here. Downstream consumers should either drop NaN rows or use model-level missing-value handling.",
+  "outputs": {
+    "morph_features": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\data\\canonical\\morph_features_v6.csv",
+    "manifest": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\data\\canonical\\morph_features_manifest.json"
+  }
+}

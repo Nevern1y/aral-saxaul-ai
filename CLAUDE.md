@@ -26,6 +26,44 @@ Version history lives in `README.md` ("История версий"). Three obso
 docs (SCRUM.md, PROJECT_CONTEXT.md, V3_ARCHITECTURE.md) were removed in this
 cleanup — don't recreate them; update `README.md` instead.
 
+## V6 science layer (companion to V5.1, NOT a replacement)
+
+<!-- V6_SCOPE_AUTO -->
+> **V6 scope (auto-generated — see `data/canonical/SCOPE_AND_LIMITATIONS_V6.md`):** Shipped salinity anchor = **M0 (univariate NDMI logit)**, LOO AUC 0.682 (CI [0.556, 0.802]). **Regional calibration drift (W1):** pooled spatial AUC 0.385 vs per-block 0.792 — the model ranks salinity *locally* but absolute level must be calibrated per region.
+<!-- /V6_SCOPE_AUTO -->
+
+V6 adds a **soil-salinity-anchored** science layer on top of the frozen V5.1 map.
+It is trained on 70 georeferenced lab profiles (Pachikin/Kozybaeva 2012–2014). The
+V5.1 10 m product and `thresholds_v5.json` stay **frozen** — V6 lives on the 30 m
+wall-to-wall stack and in the dashboard's "Проверка и данные" tab only. The main
+map and its UX are unchanged.
+
+- **Validated core:** logistic regression of measured topsoil salinity (>1 %) on
+  30 m NDMI, n=70, LOO AUC 0.682 (CI [0.552, 0.800]). suitability = 1 − P(saline).
+  Independent of saxaul labels — do not reintroduce label circularity.
+- **Demoted on purpose:** a direct NDMI+MSAVI→saxaul classifier is exploratory
+  only (LOO AUC ≈ 0.48 at 6 positives). Do NOT promote it to a decision model.
+- `scripts/v6/*` + `scripts/run_v6_pipeline.py` (one-shot; `--all --qa` for full
+  rebuild). DAG: extract_docx → build_canonical_db → extract_saxaul_labels →
+  build_ml_dataset → calibrate_thresholds → train_suitability_model →
+  build_suitability_index → spatial_validation.
+- **Reproducibility rule:** every shipped number/markdown section must be produced
+  by a script, not hand-edited into an output. The pit-validation table and the
+  calibration/QA report prose are generated in-script for this reason; regenerating
+  yields byte-identical tracked artifacts. `scripts/v6/qa_science_audit_v6.py`
+  enforces no-circularity, AUC-CI sanity (lower bound ≥ 0.5), zone reconciliation,
+  coverage parity, and presence of honesty caveats.
+- V6 rasters (`suitability_index_v6.tif`, `suitability_zones_v6.tif`,
+  `suitability_uncertainty_v6.tif`) are gitignored/regenerated; JSON/CSV/MD are
+  tracked (the dashboard reads only the tracked ones).
+- Two saline zones (3/4) are a **severity split** on one NDMI axis (reusing V5
+  ZoneClass codes for legend parity), not V5's wet/dry-brine physics. The 30 m
+  stack has no SCL band and its slope band is only ~33 % finite (so no slope gate
+  at 30 m). Keep these caveats honest in any edit.
+- The legacy on-disk VRT (`feature_stack_30m.vrt`) references a CORRUPT original
+  tile; V6 reads pixels from the two good tiles (`feature_stack_30m_tile1.tif` +
+  `feature_stack_30m_tile0_redo.tif`) and uses the VRT for geometry only.
+
 ## Layout
 
 - `app.py` — **standalone** Streamlit dashboard (3 tabs: map+summary, checks+data,
@@ -58,7 +96,10 @@ pip install -r requirements.txt        # app/runtime deps (Python 3.12)
 streamlit run app.py                    # dashboard, port 8501
 
 pip install -r requirements-dev.txt     # pytest + ruff (NOT for Streamlit Cloud)
-python -m pytest                         # 9 tests; smoke + data contracts
+python -m pytest                         # 18 tests; smoke + V5/V6 data contracts
+# ⚠ Must run under SYSTEM Python 3.12 (e.g. C:\Users\...\Python\Python312\python.exe).
+# The Hermes-default venv has no pytest and no GIS stack — you'll see "No module named pytest".
+# A committed requirements.lock captures the working interpreter's package set.
 ```
 
 Full pipeline regeneration (needs GEE auth + local GIS libs): see README
