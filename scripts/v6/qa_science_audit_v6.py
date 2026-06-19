@@ -411,6 +411,66 @@ else:
               "benchmark report prose names the JSON-recommended model", f"id={rid}")
 
 
+
+# ── 6c. REPORT — scope statements + honest known-limitations (W1/W4/W5/W10/W11/W12) ─
+section("TEST 6c: REPORT scope statements + limitations (script-generated, enforced)")
+scope_path = CANON / "SCOPE_AND_LIMITATIONS_V6.md"
+if not scope_path.exists():
+    check(False, "SCOPE_AND_LIMITATIONS_V6.md present", "run scripts/v6/generate_scope_statements.py")
+else:
+    scope = scope_path.read_text(encoding="utf-8")
+    bench_p = CANON / "model_v6_benchmark.json"
+    m0b = {}
+    if bench_p.exists():
+        _b = load(bench_p)
+        m0b = next((m for m in _b.get("models", []) if m.get("id") == "M0"), {})
+    # W1: pooled + per-block numbers present AND match the benchmark JSON (no hand-typed drift)
+    pooled = m0b.get("pooled_spatial_auc")
+    perblk = m0b.get("mean_per_block_spatial_auc")
+    check("Regional calibration drift" in scope or "regional" in scope.lower(),
+          "scope doc states W1 regional calibration drift")
+    if pooled is not None:
+        check(f"{pooled:.3f}" in scope or str(pooled) in scope,
+              "scope doc pooled AUC matches benchmark JSON (not hand-typed)", f"pooled={pooled}")
+    if perblk is not None:
+        check(f"{perblk:.3f}" in scope or str(perblk) in scope,
+              "scope doc per-block AUC matches benchmark JSON", f"per_block={perblk}")
+    # W4/W5: in-AOI vs out-of-AOI distinction surfaced
+    check("in-AOI" in scope and "out-of-AOI" in scope,
+          "scope doc surfaces in-AOI vs out-of-AOI (W4/W5)")
+    # W10: temporal drift caveat
+    check("2012-2014" in scope or "2012–2014" in scope,
+          "scope doc carries temporal-drift / calibration-vintage caveat (W10)")
+    check("temporal" in scope.lower() or "stationar" in scope.lower(),
+          "scope doc names temporal drift / stationarity assumption (W10)")
+    # W11: SCL water-mask + slope/TWI gaps documented
+    check("SCL" in scope and ("slope" in scope.lower() or "TWI" in scope),
+          "scope doc documents 30m SCL + slope/TWI coverage gaps (W11)")
+    # W12: 10m re-evaluation trigger with concrete threshold
+    check("re-test" in scope.lower() or "re-evaluat" in scope.lower(),
+          "scope doc records the 10m cascade re-evaluation trigger (W12)")
+    check("n >= 30" in scope or "n>=30" in scope or "n ≥ 30" in scope or "30" in scope,
+          "scope doc states the concrete valid-pixel re-test threshold (W12)")
+    # 2020/2021 decision: out-of-period only, NOT merged
+    check("2020/2021" in scope or "2020" in scope,
+          "scope doc records the 2020/2021 out-of-period decision")
+    check("NOT merged" in scope or "not merged" in scope.lower(),
+          "scope doc states 2020/2021 is NOT merged into 2012-2014 labels")
+    # anti-pattern guard restated
+    check("1 - P(saline)" in scope or "1 − P(saline)" in scope or "1-P(saline)" in scope,
+          "scope doc restates suitability = 1 - P(saline) (anti-pattern guard)")
+
+    # README + CLAUDE carry the auto-generated scope block with the live pooled number
+    for _doc, _name in [(BASE / "README.md", "README.md"), (BASE / "CLAUDE.md", "CLAUDE.md")]:
+        if _doc.exists():
+            _t = _doc.read_text(encoding="utf-8")
+            check("<!-- V6_SCOPE_AUTO -->" in _t,
+                  f"{_name} has the auto-generated V6 scope block")
+            if pooled is not None:
+                check(f"{pooled:.3f}" in _t or str(pooled) in _t,
+                      f"{_name} scope block pooled AUC matches benchmark JSON (script-generated)",
+                      f"pooled={pooled}")
+
 # ── verdict ─────────────────────────────────────────────────────────────
 print(f"\n{'=' * 70}")
 print("  V6 SCIENCE AUDIT SUMMARY")

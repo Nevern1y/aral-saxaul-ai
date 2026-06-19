@@ -28,6 +28,10 @@ cleanup — don't recreate them; update `README.md` instead.
 
 ## V6 science layer (companion to V5.1, NOT a replacement)
 
+<!-- V6_SCOPE_AUTO -->
+> **V6 scope (auto-generated — see `data/canonical/SCOPE_AND_LIMITATIONS_V6.md`):** Shipped salinity anchor = **M0 (univariate NDMI logit)**, LOO AUC 0.682 (CI [0.556, 0.802]). **Regional calibration drift (W1):** pooled spatial AUC 0.385 vs per-block 0.792 — the model ranks salinity *locally* but absolute level must be calibrated per region.
+<!-- /V6_SCOPE_AUTO -->
+
 V6 adds a **soil-salinity-anchored** science layer on top of the frozen V5.1 map.
 It is trained on 70 georeferenced lab profiles (Pachikin/Kozybaeva 2012–2014). The
 V5.1 10 m product and `thresholds_v5.json` stay **frozen** — V6 lives on the 30 m

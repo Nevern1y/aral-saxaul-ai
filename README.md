@@ -175,6 +175,10 @@ V5.1 хранит данные в `outputs/science/`:
 
 ## V6 — слой солёности по лабораторным данным (научное дополнение)
 
+<!-- V6_SCOPE_AUTO -->
+> **V6 scope (auto-generated — see `data/canonical/SCOPE_AND_LIMITATIONS_V6.md`):** Shipped salinity anchor = **M0 (univariate NDMI logit)**, LOO AUC 0.682 (CI [0.556, 0.802]). **Regional calibration drift (W1):** pooled spatial AUC 0.385 vs per-block 0.792 — the model ranks salinity *locally* but absolute level must be calibrated per region.
+<!-- /V6_SCOPE_AUTO -->
+
 V6 не заменяет карту V5.1, а **дополняет** её количественной, проверяемой оценкой
 засоления почвы. Он обучен на отчёте Пачикина–Козыбаевой (2012–2014): **70
 georeferenced почвенных разрезов** с измеренной солёностью — это ~6× больше точек
