@@ -5,10 +5,10 @@ highest-value guard for app.py — it re-runs the entire 1000-line script and
 fails on any uncaught exception, which is exactly the class of regression that
 a refactor of the data loaders or layout tends to introduce.
 
-NOTE: AppTest cannot see the Folium maps. They are injected via
-streamlit.components.v1.html (see app.py _render_map) and are opaque to the
-harness. Visual map verification lives in the `verify-map-render` skill
-(Playwright against the deployed site), not here.
+NOTE: AppTest cannot see the Folium maps. They are injected via Streamlit's
+iframe API (see app.py _render_map) and are opaque to the harness. Visual map
+verification lives in the `verify-map-render` skill (Playwright against the
+deployed site), not here.
 """
 
 from __future__ import annotations

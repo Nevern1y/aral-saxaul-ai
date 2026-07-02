@@ -9,4 +9,4 @@ rasterio>=1.4
 requests>=2.32
 scipy>=1.14
 shapely>=2.0
-streamlit>=1.35
+streamlit>=1.57
