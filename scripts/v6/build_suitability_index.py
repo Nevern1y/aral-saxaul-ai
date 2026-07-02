@@ -1,7 +1,7 @@
 """Phase 6b — wall-to-wall suitability index from the validated salinity model.
 
 This applies the Phase 6 *validated core* (NDMI -> P(topsoil salts > 1%), n=70,
-LOO AUC 0.68 / calibration AUC 0.77) to the 30 m wall-to-wall feature stack to
+LOO AUC 0.682 / calibration AUC 0.77) to the 30 m wall-to-wall feature stack to
 produce two rasters:
 
 1. ``suitability_index_v6.tif`` (float32, 0..1) — the new V6 scientific product.

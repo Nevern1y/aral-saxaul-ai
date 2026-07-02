@@ -16,12 +16,14 @@ import pytest
 
 import app
 
-pytestmark = pytest.mark.skipif(
-    not (app.BASE_DIR / "outputs" / "data" / "v5_stats.json").exists(),
+V5_DATA_PRESENT = (app.BASE_DIR / "outputs" / "data" / "v5_stats.json").exists()
+v5_only = pytest.mark.skipif(
+    not V5_DATA_PRESENT,
     reason="local V5 data tree not present (outputs/ is gitignored)",
 )
 
 
+@v5_only
 def test_v5_stats_has_keys_used_by_metrics_panel() -> None:
     stats = app.load_v5_stats()
     assert isinstance(stats, dict)
@@ -30,6 +32,7 @@ def test_v5_stats_has_keys_used_by_metrics_panel() -> None:
         assert key in stats, f"v5_stats.json missing '{key}'"
 
 
+@v5_only
 def test_class_pixels_loader_shape() -> None:
     pixels, total_px, pixel_area_ha = app.load_v5_class_pixels()
     assert isinstance(pixels, dict)
@@ -39,6 +42,7 @@ def test_class_pixels_loader_shape() -> None:
     assert 1 in pixels or "1" in pixels
 
 
+@v5_only
 def test_thresholds_have_percentile_bounds() -> None:
     th = app.load_v5_thresholds()
     assert isinstance(th, dict)
@@ -48,6 +52,7 @@ def test_thresholds_have_percentile_bounds() -> None:
     assert th["NDMI_P15"] <= th["NDMI_P85"]
 
 
+@v5_only
 def test_tasks_index_columns() -> None:
     df = app.load_tasks()
     assert isinstance(df, pd.DataFrame)
@@ -64,6 +69,7 @@ def test_tasks_index_columns() -> None:
     assert not missing, f"tasks index missing columns: {missing}"
 
 
+@v5_only
 def test_audit_figure_builds_from_real_pixels() -> None:
     import json
 
@@ -79,7 +85,7 @@ def test_audit_figure_builds_from_real_pixels() -> None:
 
 def test_v6_science_loader_shape() -> None:
     v6 = app.load_v6_science()
-    assert set(v6) >= {"salinity", "suit_stats", "pit_validation", "spatial", "pit_table"}
+    assert set(v6) >= {"salinity", "suit_stats", "pit_validation", "spatial", "benchmark", "pit_table"}
 
 
 def test_v6_salinity_model_keys() -> None:
@@ -91,6 +97,16 @@ def test_v6_salinity_model_keys() -> None:
     assert {"mean", "std"} <= set(sal["scaler"])
     assert {"intercept", "rs30_ndmi"} <= set(sal["coefficients_standardized"])
     assert sal["training"]["n"] == 70
+
+
+def test_v6_model_metrics_prefer_benchmark() -> None:
+    v6 = app.load_v6_science()
+    if not v6.get("benchmark"):
+        pytest.skip("model_v6_benchmark.json not present")
+    metrics = app.v6_model_metrics(v6)
+    rec = v6["benchmark"]["recommendation"]
+    assert metrics["auc"] == rec["baseline_loo_auc"]
+    assert metrics["ci"] == rec["baseline_loo_auc_ci95"]
 
 
 def test_v6_spatial_validation_auc_sane() -> None:
@@ -127,3 +143,10 @@ def test_v6_map_html_self_contained() -> None:
     txt = p.read_text(encoding="utf-8")
     assert "data:image/png;base64" in txt, "V6 map must embed image as base64 (not a file path)"
     assert "leaflet" in txt.lower(), "V6 map must be a Leaflet/Folium map"
+    assert "Что показывает выбранное место" in txt, "V6 map must explain hovered locations"
+    assert "Балл низкого риска соли" in txt, "V6 map must show a human-readable low-salt score"
+    assert "Примерный риск соли" in txt, "V6 map must translate score into salinity risk"
+    assert "map.on('mousemove'" in txt, "V6 map must keep hover/click decision panel"
+    assert "map.on('click'" in txt, "V6 map must update decision panel on click"
+    assert "\\u0417\\u043e\\u043d\\u044b \\u0440\\u0438\\u0441\\u043a\\u0430 \\u0441\\u043e\\u043b\\u0438 V6" in txt
+    assert "\\u0411\\u0430\\u043b\\u043b V6: \\u043d\\u0438\\u0436\\u0435 \\u0440\\u0438\\u0441\\u043a \\u0441\\u043e\\u043b\\u0438" in txt
