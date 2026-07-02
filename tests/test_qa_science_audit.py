@@ -33,6 +33,13 @@ REQUIRED = [
     ROOT / "outputs" / "data" / "spatial_validation_v6.json",
     ROOT / "data" / "canonical" / "SUITABILITY_INDEX_V6_QA.md",
     ROOT / "data" / "canonical" / "ml_dataset_v6.csv",
+    ROOT / "data" / "canonical" / "thresholds_v6_calibrated.json",
+    ROOT / "data" / "canonical" / "model_v6_benchmark.json",
+    ROOT / "data" / "canonical" / "model_v6_benchmark_report.md",
+    ROOT / "data" / "canonical" / "SCOPE_AND_LIMITATIONS_V6.md",
+    ROOT / "data" / "canonical" / "morph_features_v6.csv",
+    ROOT / "data" / "canonical" / "morph_features_manifest.json",
+    ROOT / "data" / "canonical" / "morph_vocab.json",
 ]
 
 
