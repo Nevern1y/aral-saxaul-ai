@@ -10,9 +10,13 @@ The current product is **V6-first salinity-risk screening**.
 - **V6 is the main layer.** It estimates topsoil salinity risk from laboratory
   soil data. `V6 score = 1 - P(saline)` where saline means topsoil total salts
   > 1%.
-- **V5.1 is a frozen helper layer.** It provides 10 m visual detail, contours,
-  KML files, and road/logistics support. Do not treat V5.1 candidate classes as
-  planting proof.
+- **V5.1 is a frozen backend pipeline, not a UI surface.** Its 10 m outputs
+  still produce the KML site contours, road distances, and `v5_stats.json`
+  consumed by the logistics tab (via `load_screening_stats()`), but the V5.1
+  map, class tables, thresholds, validation reports, and version naming are
+  deliberately removed from `app.py`. Do not reintroduce V5.1 sections or the
+  "V5.1" label into the dashboard; refer to it in UI copy only as the
+  "10 m screening pipeline" behind the KML files.
 - **Never write as if the map proves planting suitability.** The correct claim is
   preliminary screening and field-check prioritization.
 
@@ -54,15 +58,16 @@ V5.1 is a rule-based Sentinel-2 10 m cascade:
 - dry-salt proxy;
 - residual candidate class.
 
-Use V5.1 for:
+Use V5.1 (backend only) for:
 
-- detail boundaries;
-- helper contours;
 - KML task files;
+- site contours >=10 ha;
 - road-distance logistics;
-- context around the V6 salinity score.
+- `v5_stats.json` summary numbers surfaced through `load_screening_stats()`.
 
-Do not use V5.1 as the headline suitability result.
+Do not use V5.1 as the headline suitability result, and do not surface V5.1
+maps/tables/reports in the dashboard UI (removed 2026-07 by product decision;
+this includes the old "Validation reports" section of the technical tab).
 
 10 m thresholds are provisionally frozen pending data improvement (n=14 valid points today). The re-evaluation trigger (valid 10 m pixel count >= 30; see W12) is defined as a policy comment near the top of scripts/v6/calibrate_thresholds.py.
 
@@ -120,8 +125,12 @@ On this workstation, use system Python 3.12:
 - Maps render through `_render_map()` -> `st.iframe(...)`. Do not switch to
   `st.html` or `streamlit.components.v1.html`; Leaflet JS can fail under CSP or
   deprecation paths.
-- Keep `rasterio` and `geopandas` guarded in `app.py`. The dashboard must degrade
-  gracefully when local GIS wheels or generated outputs are absent.
+- Keep `geopandas` guarded in `app.py` (`rasterio` is no longer imported there).
+  The dashboard must degrade gracefully when local GIS wheels or generated
+  outputs are absent.
+- The V6 map HTML places the layers control top-left (collapsed), the legend
+  bottom-left, and the decision panel top-right — three fixed corners, no
+  overlap. Keep new map furniture out of the top-right corner.
 - `environment.yml` must not be committed.
 - AppTest cannot verify Folium internals; use browser/Playwright verification for
   map changes.

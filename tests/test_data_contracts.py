@@ -24,32 +24,12 @@ v5_only = pytest.mark.skipif(
 
 
 @v5_only
-def test_v5_stats_has_keys_used_by_metrics_panel() -> None:
-    stats = app.load_v5_stats()
+def test_screening_stats_has_keys_used_by_metrics_panel() -> None:
+    stats = app.load_screening_stats()
     assert isinstance(stats, dict)
-    # Keys consumed by the top metrics panel + audit figure in tab_analytics.
-    for key in ("clusters", "class_pixels_10m", "class_total_pixels_10m"):
+    # Keys consumed by the top metrics panel and logistics captions.
+    for key in ("clusters", "operational_area_ha"):
         assert key in stats, f"v5_stats.json missing '{key}'"
-
-
-@v5_only
-def test_class_pixels_loader_shape() -> None:
-    pixels, total_px, pixel_area_ha = app.load_v5_class_pixels()
-    assert isinstance(pixels, dict)
-    assert isinstance(total_px, int)
-    assert pixel_area_ha > 0
-    # Candidate class (1) must be represented in the class histogram.
-    assert 1 in pixels or "1" in pixels
-
-
-@v5_only
-def test_thresholds_have_percentile_bounds() -> None:
-    th = app.load_v5_thresholds()
-    assert isinstance(th, dict)
-    # The map legend explains NDMI percentile gates; both bounds must exist.
-    for key in ("NDMI_P15", "NDMI_P85"):
-        assert key in th, f"thresholds_v5.json missing '{key}'"
-    assert th["NDMI_P15"] <= th["NDMI_P85"]
 
 
 @v5_only
@@ -67,16 +47,6 @@ def test_tasks_index_columns() -> None:
     }
     missing = expected - set(df.columns)
     assert not missing, f"tasks index missing columns: {missing}"
-
-
-@v5_only
-def test_audit_figure_builds_from_real_pixels() -> None:
-    import json
-
-    pixels, total_px, _ = app.load_v5_class_pixels()
-    fig = app.make_audit_fig(json.dumps({str(k): v for k, v in pixels.items()}), total_px)
-    # With real data present the audit donut must build (not None).
-    assert fig is not None
 
 
 # ── V6 lab-data science layer contracts ────────────────────────────────

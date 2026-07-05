@@ -207,45 +207,55 @@ def metric_note(metrics: dict) -> str:
 def decision_help_html(metrics: dict) -> str:
     return f"""
 <style>
+#decision-help, #v6-map-legend {{
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(2px);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.18);
+    font-family: 'Segoe UI', Arial, sans-serif;
+}}
 @media (max-width: 520px) {{
   #decision-help {{
     top: 8px !important;
     left: 8px !important;
     right: 8px !important;
     width: auto !important;
-    max-height: 34vh;
-    overflow-y: auto;
-    padding: 9px 10px !important;
-    font-size: 12px !important;
-  }}
-  #v6-map-legend {{
-    left: 8px !important;
-    bottom: 8px !important;
-    max-width: calc(100vw - 16px) !important;
     max-height: 30vh;
     overflow-y: auto;
     padding: 8px 10px !important;
     font-size: 11px !important;
   }}
+  #v6-map-legend {{
+    left: 8px !important;
+    bottom: 8px !important;
+    max-width: calc(100vw - 16px) !important;
+    max-height: 28vh;
+    overflow-y: auto;
+    padding: 7px 9px !important;
+    font-size: 10.5px !important;
+  }}
   .leaflet-control-layers {{
     max-width: calc(100vw - 16px);
     font-size: 11px;
   }}
+  /* The help panel spans the top on phones — drop the zoom/layers controls below it. */
+  .leaflet-top.leaflet-left {{
+    top: 31vh;
+  }}
 }}
 </style>
-<div id="decision-help" style="position:fixed; top:14px; right:14px; z-index:9999;
-            background:white; padding:12px 14px; border-radius:10px;
-            box-shadow:0 0 14px rgba(0,0,0,0.20); font-size:13px;
-            font-family:'Segoe UI',Arial,sans-serif; width:310px; line-height:1.35;">
-    <div style="font-weight:700; font-size:14px; margin-bottom:4px;">What the selected spot shows</div>
+<div id="decision-help" style="position:fixed; top:12px; right:12px; z-index:9999;
+            padding:10px 12px; font-size:12px; width:250px; line-height:1.35;">
+    <div style="font-weight:700; font-size:12.5px; margin-bottom:3px; color:#0F172A;">What the selected spot shows</div>
     <div id="decision-main" style="color:#334155;">
         Hover over a colored area on the map, or click it.
     </div>
-    <div id="decision-detail" style="margin-top:6px; color:#64748B; font-size:12px;">
+    <div id="decision-detail" style="margin-top:5px; color:#64748B; font-size:11px;">
         The map will translate the color into a plain result: salinity risk, a 0-100 score, and the next step for a field visit.
     </div>
-    <div style="margin-top:8px; color:#64748B; font-size:11px; border-top:1px solid #E2E8F0; padding-top:6px;">
-        {metric_note(metrics)}. This is preliminary screening, not permission to plant.
+    <div style="margin-top:7px; color:#94A3B8; font-size:10px; border-top:1px solid #E2E8F0; padding-top:5px;">
+        {metric_note(metrics)}. Preliminary screening, not permission to plant.
     </div>
 </div>
 """
@@ -383,9 +393,13 @@ def main() -> None:
     south, west = bounds[0]
     north, east = bounds[1]
 
-    m = folium.Map(location=[45.0, 60.5], zoom_start=7,
-                   tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
-                   attr="Google Satellite", control_scale=True)
+    m = folium.Map(location=[45.0, 60.5], zoom_start=7, tiles=None, control_scale=True)
+    folium.TileLayer(
+        tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
+        attr="Google Satellite",
+        name="Satellite imagery",  # human label in the layers control (not the raw URL)
+        control=False,
+    ).add_to(m)
     map_name = m.get_name()
 
     folium.raster_layers.ImageOverlay(
@@ -414,39 +428,30 @@ def main() -> None:
             show=True,
         ).add_to(m)
 
-    folium.LayerControl(collapsed=False).add_to(m)
+    # Collapsed and top-left (under the zoom buttons): the expanded control used to
+    # sit top-right, underneath the fixed decision panel, so the two overlapped.
+    folium.LayerControl(collapsed=True, position="topleft").add_to(m)
 
     legend = """
-<div id="v6-map-legend" style="position:fixed; bottom:20px; left:20px; z-index:9999;
-            background:white; padding:10px 14px; border-radius:8px;
-            box-shadow:0 0 10px rgba(0,0,0,0.15); font-size:13px;
-            font-family:'Segoe UI',Arial,sans-serif; max-width:270px;">
-    <b style="font-size:14px;">How to read this map</b><br>
+<div id="v6-map-legend" style="position:fixed; bottom:24px; left:12px; z-index:9999;
+            padding:8px 11px; font-size:11px; max-width:200px; line-height:1.45; color:#334155;">
+    <b style="font-size:11.5px; color:#0F172A;">Legend</b><br>
 """
     for cls in (1, 3, 4, 10, 0):
         r, g, b, a = PALETTE[cls]
         sw = "background:#ffffff;border:1px solid #bbb;" if cls == 0 else f"background:rgb({r},{g},{b});"
-        legend += (f'<span style="display:inline-block;width:12px;height:12px;'
-                   f'{sw}border-radius:2px;margin-right:6px;"></span>'
+        legend += (f'<span style="display:inline-block;width:10px;height:10px;'
+                   f'{sw}border-radius:2px;margin-right:5px;"></span>'
                    f'{DISPLAY_NAMES_EN[cls]}<br>')
     legend += """
-    <hr style="margin:6px 0;">
-    <b style="font-size:12px;">Hover over the map</b>
-    <div style="margin-top:4px; color:#555; font-size:12px; line-height:1.3;">
-        A result for the selected point will appear on the right: a 0-100 score, salinity risk, and the next step.
-    </div>
-    <div style="height:10px; margin:5px 0 3px 0; border-radius:999px;
+    <div style="height:8px; margin:7px 0 3px 0; border-radius:999px;
                 background:linear-gradient(90deg,#991B1B 0%,#FDE68A 50%,#065F46 100%);
                 border:1px solid #ddd;"></div>
-    <div style="display:flex; justify-content:space-between; font-size:11px; color:#444;">
-        <span>0.0 high salinity risk</span><span>1.0 low risk</span>
+    <div style="display:flex; justify-content:space-between; font-size:10px; color:#64748B;">
+        <span>0 high salt risk</span><span>1 low risk</span>
     </div>
-    <hr style="margin:6px 0;">
-    <span style="color:#666;font-size:11px;">__METRIC_NOTE__<br>
-    Zones 3/4 show salinity severity from NDMI. Always confirm with a field soil sample before any decision.</span>
 </div>
 """
-    legend = legend.replace("__METRIC_NOTE__", metric_note(metrics))
     m.get_root().html.add_child(folium.Element(legend))
     m.get_root().html.add_child(folium.Element(decision_help_html(metrics)))
     if score_ok:
