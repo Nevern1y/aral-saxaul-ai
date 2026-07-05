@@ -1,37 +1,37 @@
 {
-  "area_ha": 1598800,
-  "area_km2": 15988.0,
-  "candidate_10m_area_ha": 1594114.9,
-  "candidate_10m_area_km2": 15941.1,
+  "area_ha": 1589778,
+  "area_km2": 15897.8,
+  "candidate_10m_area_ha": 1585258.5,
+  "candidate_10m_area_km2": 15852.6,
   "class_pixels_10m": {
-    "0": 614091651,
-    "1": 159411486,
-    "3": 565,
-    "4": 22655785,
-    "5": 587747,
-    "10": 114860704
+    "0": 614810979,
+    "1": 158525847,
+    "3": 567,
+    "4": 22574362,
+    "5": 1124609,
+    "10": 114571574
   },
   "class_total_pixels_10m": 911607938,
   "pixel_area_ha_10m": 0.01,
-  "candidate_100m_area_ha": 1598800,
-  "candidate_100m_area_km2": 15988.0,
-  "operational_area_ha": 1564250,
-  "operational_area_km2": 15642.5,
-  "small_zone_area_ha": 34550,
-  "clusters": 2132,
+  "candidate_100m_area_ha": 1589778,
+  "candidate_100m_area_km2": 15897.8,
+  "operational_area_ha": 1554879,
+  "operational_area_km2": 15548.8,
+  "small_zone_area_ha": 34899,
+  "clusters": 2134,
   "top10_ha": [
-    977221,
-    192082,
+    970867,
+    191551,
     44892,
-    44855,
-    24007,
-    23146,
-    21900,
-    20821,
-    19508,
+    44840,
+    23003,
+    22430,
+    21893,
+    20835,
+    19423,
     8162
   ],
-  "top10_km2": 13765.9,
+  "top10_km2": 13679.0,
   "histogram": {
     "labels": [
       "10-100",
@@ -40,8 +40,8 @@
       ">5000"
     ],
     "counts": [
-      1840,
-      250,
+      1845,
+      247,
       31,
       11
     ]

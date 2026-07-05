@@ -28,6 +28,26 @@ carries a human-readable justification. Nothing blind survives silently.
 Output: data/canonical/thresholds_v6_calibrated.json + CALIBRATION_REPORT.md
 """
 
+# --------------------------------------------------------------
+# 10 m Cascade Re-Evaluation Policy (W12 audit conclusion, 2026-06-19;
+# see data/canonical/audit/COVERAGE_FEASIBILITY.md)
+# --------------------------------------------------------------
+# The freeze decision above (point 1) is not permanent. Re-evaluate only when:
+#   - WHEN: a future ml_dataset_v6.csv shows valid 10 m pixel count >= 30
+#     (next field campaign or improved Sentinel-2 composite coverage).
+#   - ACCEPTANCE: Spearman rho >= 0.55 (p < 0.05) between 10 m NDMI and
+#     measured salinity, AND |correlation(10 m NDMI, 30 m NDMI)| < 0.1
+#     at the overlap points (i.e. the current anti-correlation/edge-pixel
+#     anomaly, r ~= -0.35, has resolved).
+#   - ACTION: if both criteria hold, unfreeze the V5.1 10 m cascade and
+#     recalibrate it; otherwise keep it frozen and re-check at the next
+#     data update.
+# Rationale: n=14 is far below the ~50 uncorrelated points needed for a
+# reliable rank correlation; n=30 gives roughly 60% power to detect a
+# medium effect (rho=0.55). This is a policy note only: no code path in
+# this script currently reads or acts on it.
+# --------------------------------------------------------------
+
 from __future__ import annotations
 
 import json

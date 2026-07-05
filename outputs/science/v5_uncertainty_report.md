@@ -13,9 +13,9 @@ This report estimates threshold sensitivity on a decimated ~200 m grid. It is a 
 
 | scenario | candidate_area_ha_approx | candidate_area_km2_approx | candidate_pct_grid |
 | --- | --- | --- | --- |
-| risk_conservative_P10_P90 | 1.66735e+06 | 16673.5 | 18.301 |
-| baseline_P15_P85 | 1.48988e+06 | 14898.8 | 16.353 |
-| risk_sensitive_P20_P80 | 1.50778e+06 | 15077.8 | 16.55 |
+| risk_conservative_P10_P90 | 1.65864e+06 | 16586.4 | 18.206 |
+| baseline_P15_P85 | 1.48152e+06 | 14815.2 | 16.262 |
+| risk_sensitive_P20_P80 | 1.49921e+06 | 14992.1 | 16.456 |
 
 ## Point Class Stability
 

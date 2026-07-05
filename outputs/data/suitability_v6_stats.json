@@ -20,28 +20,28 @@
     "width": 14844,
     "total_pixels": 166208268
   },
-  "aoi_pixels": 88302423,
-  "valid_pixels": 85555004,
-  "valid_fraction_of_aoi": 0.9689,
-  "extrapolated_pixels": 5181184,
-  "extrapolated_fraction_of_valid": 0.0606,
+  "aoi_pixels": 106500271,
+  "valid_pixels": 99796743,
+  "valid_fraction_of_aoi": 0.9371,
+  "extrapolated_pixels": 1660022,
+  "extrapolated_fraction_of_valid": 0.0166,
   "water_semantics_note": "Water/NoData here is mostly outside-AOI + NDMI-invalid; the 30m stack has no Sentinel-2 SCL band, so V5's SCL-based water masking is not reproduced. Wet saline playa that V5 hid as water surfaces here as high-NDMI strong-salinity (class 4).",
   "zone_pixels": {
-    "0": 80653264,
-    "1": 4529434,
-    "3": 6154816,
-    "4": 49333714,
-    "10": 25537040
+    "0": 66411525,
+    "1": 4528813,
+    "3": 7928959,
+    "4": 65298428,
+    "10": 22040543
   },
   "zone_area_ha": {
-    "0": 5098455.8,
-    "1": 284802.2,
-    "3": 388647.5,
-    "4": 3119778.0,
-    "10": 1608922.6
+    "0": 4181470.7,
+    "1": 284903.4,
+    "3": 501297.8,
+    "4": 4135982.3,
+    "10": 1396951.9
   },
   "total_area_ha": 10500606.1,
-  "mean_suitability_bare_land": 0.5876,
+  "mean_suitability_bare_land": 0.5858,
   "class_names": {
     "0": "Water / NoData",
     "1": "Candidate (low salinity)",

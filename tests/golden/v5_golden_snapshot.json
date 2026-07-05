@@ -1,25 +1,25 @@
 {
   "description": "V5.1 production invariants frozen before V6 science layer.",
   "thresholds_v5": {
-    "NDMI_P15": -0.13014958798885345,
-    "NDMI_P85": -0.05709220468997955,
-    "NDSI_Green_SWIR2_P15": -0.32272350788116455,
-    "NDSI_Green_SWIR2_P85": -0.08537112176418304,
-    "BR_NIR_SWIR2_P15": 0.8192713260650635,
-    "BR_NIR_SWIR2_P85": 1.0522245168685913
+    "NDMI_P15": -0.13014958873391153,
+    "NDMI_P85": -0.05709220301359892,
+    "NDSI_Green_SWIR2_P15": -0.3227235212922096,
+    "NDSI_Green_SWIR2_P85": -0.08537112139165402,
+    "BR_NIR_SWIR2_P15": 0.8192713230848312,
+    "BR_NIR_SWIR2_P85": 1.0522244632244109
   },
   "v5_stats_invariants": {
     "class_pixels_10m": {
-      "0": 614091651,
-      "1": 159411486,
-      "3": 565,
-      "4": 22655785,
-      "5": 587747,
-      "10": 114860704
+      "0": 614810979,
+      "1": 158525847,
+      "3": 567,
+      "4": 22574362,
+      "5": 1124609,
+      "10": 114571574
     },
     "class_total_pixels_10m": 911607938,
-    "candidate_10m_area_ha": 1594114.9,
-    "clusters": 2132,
-    "area_ha": 1598800
+    "candidate_10m_area_ha": 1585258.5,
+    "clusters": 2134,
+    "area_ha": 1589778
   }
 }

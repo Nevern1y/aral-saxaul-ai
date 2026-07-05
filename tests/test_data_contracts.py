@@ -143,10 +143,28 @@ def test_v6_map_html_self_contained() -> None:
     txt = p.read_text(encoding="utf-8")
     assert "data:image/png;base64" in txt, "V6 map must embed image as base64 (not a file path)"
     assert "leaflet" in txt.lower(), "V6 map must be a Leaflet/Folium map"
-    assert "Что показывает выбранное место" in txt, "V6 map must explain hovered locations"
-    assert "Балл низкого риска соли" in txt, "V6 map must show a human-readable low-salt score"
-    assert "Примерный риск соли" in txt, "V6 map must translate score into salinity risk"
+    assert "What the selected spot shows" in txt, "V6 map must explain hovered locations"
+    assert "Low-salinity-risk score" in txt, "V6 map must show a human-readable low-salt score"
+    assert "Estimated salinity risk" in txt, "V6 map must translate score into salinity risk"
     assert "map.on('mousemove'" in txt, "V6 map must keep hover/click decision panel"
     assert "map.on('click'" in txt, "V6 map must update decision panel on click"
-    assert "\\u0417\\u043e\\u043d\\u044b \\u0440\\u0438\\u0441\\u043a\\u0430 \\u0441\\u043e\\u043b\\u0438 V6" in txt
-    assert "\\u0411\\u0430\\u043b\\u043b V6: \\u043d\\u0438\\u0436\\u0435 \\u0440\\u0438\\u0441\\u043a \\u0441\\u043e\\u043b\\u0438" in txt
+    assert "V6 salinity risk zones" in txt
+    assert "V6 score: higher = lower salinity risk (0..1)" in txt
+
+
+def test_v6_calibrated_thresholds_omit_10m() -> None:
+    # W12 policy (see scripts/v6/calibrate_thresholds.py): the V5.1 10 m
+    # cascade stays frozen. This must never silently start publishing 10 m
+    # cuts here.
+    path = app.BASE_DIR / "data" / "canonical" / "thresholds_v6_calibrated.json"
+    if not path.exists():
+        pytest.skip("thresholds_v6_calibrated.json not present")
+    import json
+
+    thresholds = json.loads(path.read_text(encoding="utf-8"))
+    keys = thresholds.get("calibrated_thresholds", {})
+    ten_m_keys = [
+        k for k in keys
+        if "_10m" in k or (k.startswith("rs_") and not k.startswith("rs30_"))
+    ]
+    assert not ten_m_keys, f"10 m thresholds must not be published (frozen policy): {ten_m_keys}"

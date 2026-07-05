@@ -1,0 +1,34 @@
+{
+  "source": "suitability_zones_v6.tif",
+  "downsample_factor": 10,
+  "approx_resolution_m": 300.0,
+  "min_zone_area_ha": 10.0,
+  "zones_kept": 11005,
+  "zones_dropped_small": 12961,
+  "area_ha_by_class": {
+    "1": {
+      "area_ha": 217240.9,
+      "count": 1702
+    },
+    "3": {
+      "area_ha": 274347.4,
+      "count": 3034
+    },
+    "4": {
+      "area_ha": 3151028.3,
+      "count": 3336
+    },
+    "10": {
+      "area_ha": 1659686.2,
+      "count": 2933
+    }
+  },
+  "total_area_ha": 5302302.8,
+  "class_names": {
+    "1": "Candidate (low salinity)",
+    "3": "Moderate salinity risk",
+    "4": "Strong salinity risk",
+    "10": "Existing vegetation"
+  },
+  "note": "Vectorized with tifffile+scipy+shapely (no rasterio) because rasterio's bundled GDAL DLL is blocked by this workstation's Application Control policy. Zones are traced at ~300 m resolution (mode-pooled from the native 30 m V6 grid), not pixel-exact."
+}

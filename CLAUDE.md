@@ -64,6 +64,8 @@ Use V5.1 for:
 
 Do not use V5.1 as the headline suitability result.
 
+10 m thresholds are provisionally frozen pending data improvement (n=14 valid points today). The re-evaluation trigger (valid 10 m pixel count >= 30; see W12) is defined as a policy comment near the top of scripts/v6/calibrate_thresholds.py.
+
 ## Main Entry Points
 
 - `app.py` — standalone Streamlit dashboard with 3 tabs: map+summary,
@@ -137,7 +139,7 @@ On this workstation, use system Python 3.12:
 
 ## Language And UX
 
-- Russian is the primary UI language.
+- English is the primary UI language (translated from Russian; see git history for the source Russian strings if needed).
 - Speak to field users: where to go, what risk is present, what to download, what
   to verify next.
 - Technical metrics (AUC, LOO, CI, Spearman, NDMI internals) belong in specialist

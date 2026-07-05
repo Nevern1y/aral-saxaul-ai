@@ -4,10 +4,10 @@ Produces outputs/reports/suitability_map_v6.html with two togglable overlays
 (base64-embedded PNGs, so the HTML works on Streamlit Cloud where the source
 .tif files are gitignored):
 
-  1. "Зоны риска соли V6" — suitability_zones_v6.tif in the SAME palette/legend
+  1. "V6 salinity risk zones" — suitability_zones_v6.tif in the SAME palette/legend
      codes as V5.1 (candidate / moderate-salt / strong-salt / vegetation), so the
      map reads like the existing product but is built on the lab-calibrated layer.
-  2. "Балл V6: ниже риск соли (0..1)" — suitability_index_v6.tif as a green→red
+  2. "V6 score: higher = lower salinity risk (0..1)" — suitability_index_v6.tif as a green→red
      gradient (high score = less saline = greener), off by default.
 
 Both rasters are EPSG:4326. They are downsampled to a light RGBA overlay and
@@ -32,16 +32,19 @@ try:
     import rasterio
     from PIL import Image
     from rasterio.enums import Resampling
+    from shapely.geometry import Polygon, mapping, shape
 except ImportError as e:  # pragma: no cover
-    raise SystemExit(f"render_v6_map needs rasterio + folium + Pillow: {e}")
+    raise SystemExit(f"render_v6_map needs rasterio + folium + Pillow + shapely: {e}")
 
 BASE = Path(__file__).resolve().parent.parent.parent
 CANON = BASE / "data" / "canonical"
 ODATA = BASE / "outputs" / "data"
+AOI_DIR = BASE / "outputs" / "aoi"
 REPORTS = BASE / "outputs" / "reports"
 
 ZONES = ODATA / "suitability_zones_v6.tif"
 INDEX = ODATA / "suitability_index_v6.tif"
+AOI_BOUNDARY = AOI_DIR / "aral_sea_1960.geojson"
 HTML_PATH = REPORTS / "suitability_map_v6.html"
 PNG_ZONES = REPORTS / "suitability_map_v6_zones.png"
 PNG_INDEX = REPORTS / "suitability_map_v6_score.png"
@@ -60,12 +63,12 @@ PALETTE = {
     4:  (153, 27, 27, 220),    # strong salinity           #991B1B
     10: (167, 243, 208, 220),  # vegetation                #A7F3D0
 }
-DISPLAY_NAMES_RU = {
-    1: "Кандидат (низкое засоление)",
-    3: "Умеренное засоление",
-    4: "Сильное засоление",
-    10: "Есть растительность",
-    0: "Вода / нет данных",
+DISPLAY_NAMES_EN = {
+    1: "Candidate zone (low salinity)",
+    3: "Moderate salinity",
+    4: "Strong salinity",
+    10: "Existing vegetation",
+    0: "Water / no data",
 }
 
 
@@ -145,6 +148,31 @@ def project_rgba_for_leaflet(img: np.ndarray, bounds: list[list[float]]) -> np.n
     return img[::-1][row_idx][::-1]
 
 
+def load_aoi_boundary_geojson(hole_area_min_deg2: float = 0.001, simplify_tol_deg: float = 0.0015) -> dict | None:
+    """Load the 1960 AOI polygon and lighten it for map display.
+
+    The raw file (~20,800 rings from raster->vector conversion) is far too
+    heavy to embed directly. Small holes (<0.001 deg^2, mostly vectorization
+    noise) are dropped and the remainder is simplified; this keeps the visible
+    coastline shape and the ~25 holes large enough to matter at map scale
+    while cutting point count roughly 10x.
+    """
+    if not AOI_BOUNDARY.exists():
+        return None
+    data = json.loads(AOI_BOUNDARY.read_text(encoding="utf-8"))
+    feats = data.get("features", [])
+    if not feats:
+        return None
+    geom = shape(feats[0]["geometry"])
+    kept_holes = [h for h in geom.interiors if Polygon(h).area > hole_area_min_deg2]
+    light = Polygon(geom.exterior, kept_holes).simplify(simplify_tol_deg, preserve_topology=True)
+    return {
+        "type": "Feature",
+        "properties": {"name": "AOI boundary (1960 shoreline)"},
+        "geometry": mapping(light),
+    }
+
+
 def load_map_metrics() -> dict:
     """Read the current shipped-model metrics for map text; never hand-type them."""
     metrics = {"auc": None, "ci": None, "n": None}
@@ -172,8 +200,8 @@ def metric_note(metrics: dict) -> str:
     auc_txt = f"LOO AUC {auc:.3f}" if auc is not None else "LOO AUC n/a"
     if ci:
         auc_txt += f", CI [{ci[0]:.3f}, {ci[1]:.3f}]"
-    n_txt = f"{n} лаб. профилям" if n else "лабораторным профилям"
-    return f"30 м · модель солёности по {n_txt} ({auc_txt})"
+    n_txt = f"{n} lab soil profiles" if n else "lab soil profiles"
+    return f"30 m · salinity model from {n_txt} ({auc_txt})"
 
 
 def decision_help_html(metrics: dict) -> str:
@@ -209,15 +237,15 @@ def decision_help_html(metrics: dict) -> str:
             background:white; padding:12px 14px; border-radius:10px;
             box-shadow:0 0 14px rgba(0,0,0,0.20); font-size:13px;
             font-family:'Segoe UI',Arial,sans-serif; width:310px; line-height:1.35;">
-    <div style="font-weight:700; font-size:14px; margin-bottom:4px;">Что показывает выбранное место</div>
+    <div style="font-weight:700; font-size:14px; margin-bottom:4px;">What the selected spot shows</div>
     <div id="decision-main" style="color:#334155;">
-        Наведите курсор на цветной участок карты или нажмите на него.
+        Hover over a colored area on the map, or click it.
     </div>
     <div id="decision-detail" style="margin-top:6px; color:#64748B; font-size:12px;">
-        Карта переведёт цвет в понятный вывод: риск соли, балл 0–100 и следующий шаг для выезда.
+        The map will translate the color into a plain result: salinity risk, a 0-100 score, and the next step for a field visit.
     </div>
     <div style="margin-top:8px; color:#64748B; font-size:11px; border-top:1px solid #E2E8F0; padding-top:6px;">
-        {metric_note(metrics)}. Это предварительный отбор, не разрешение на посадку.
+        {metric_note(metrics)}. This is preliminary screening, not permission to plant.
     </div>
 </div>
 """
@@ -237,40 +265,40 @@ def interaction_script(map_name: str, bounds: list[list[float]], lookup_uri: str
   const bounds = {{south:{south:.12f}, west:{west:.12f}, north:{north:.12f}, east:{east:.12f}}};
   const zoneInfo = {{
     1: {{
-      title: 'Можно рассматривать для выезда',
-      label: 'Кандидатная зона: низкая солёность',
-      advice: 'Сначала проверьте доступ к дороге и сделайте полевую пробу почвы. Если проба подтвердит низкую соль, участок можно ставить выше в план работ.',
+      title: 'Worth considering for a field visit',
+      label: 'Candidate zone: low salinity',
+      advice: 'First check road access and take a field soil sample. If the sample confirms low salt, this site can be ranked higher in the work plan.',
       color: '#065F46'
     }},
     3: {{
-      title: 'Нужна осторожность',
-      label: 'Средний риск соли',
-      advice: 'Не планируйте посадку без полевой пробы. Подходит как запасной вариант или для точечной проверки.',
+      title: 'Needs caution',
+      label: 'Moderate salinity risk',
+      advice: 'Do not plan planting without a field soil sample. Suitable as a backup option or for a spot check.',
       color: '#B45309'
     }},
     4: {{
-      title: 'Высокий риск засоления',
-      label: 'Сильное засоление',
-      advice: 'Для посадки саксаула это плохой кандидат без мелиорации или специальных причин. В обычном плане выезда лучше пропустить.',
+      title: 'High salinity risk',
+      label: 'Strong salinity',
+      advice: 'A poor candidate for saxaul planting without soil remediation or a special reason. Best skipped in a normal field-visit plan.',
       color: '#991B1B'
     }},
     10: {{
-      title: 'Уже есть растительность',
-      label: 'Не зона новой посадки',
-      advice: 'Здесь уже видна растительность. Используйте как контроль или для обследования текущего состояния, а не как основной участок новой посадки.',
+      title: 'Already has vegetation',
+      label: 'Not a new-planting zone',
+      advice: 'Vegetation is already visible here. Use this as a control or to survey current conditions, not as a primary new-planting site.',
       color: '#047857'
     }}
   }};
 
   function describeScore(score) {{
-    if (score >= 0.66) return 'высокий балл низкого риска соли';
-    if (score >= 0.33) return 'средний балл низкого риска соли';
-    return 'низкий балл низкого риска соли';
+    if (score >= 0.66) return 'high score of low salinity risk';
+    if (score >= 0.33) return 'medium score of low salinity risk';
+    return 'low score of low salinity risk';
   }}
 
   function setEmpty() {{
-    panelMain.innerHTML = 'В этой точке нет оценки';
-    panelDetail.innerHTML = 'Наведите на цветной участок внутри слоя V6. Прозрачные места не используются для решения.';
+    panelMain.innerHTML = 'No score at this point';
+    panelDetail.innerHTML = 'Hover over a colored area inside the V6 layer. Transparent areas are not used for decisions.';
   }}
 
   function update(latlng) {{
@@ -299,11 +327,11 @@ def interaction_script(map_name: str, bounds: list[list[float]], lookup_uri: str
     const scoreText = describeScore(score);
     panelMain.innerHTML = '<div style="font-weight:700;color:' + info.color + ';">' + info.title + '</div>' +
       '<div style="margin-top:4px;">' + info.label + '</div>' +
-      '<div style="margin-top:6px;"><b>Балл низкого риска соли:</b> ' + pct + ' из 100 (' + scoreText + ')</div>' +
-      '<div><b>Примерный риск соли (&gt;1%):</b> ' + saline + ' из 100 по модели V6</div>' +
-      '<div><b>Класс зоны:</b> ' + info.label + '</div>';
-    panelDetail.innerHTML = '<b>Что делать:</b> ' + info.advice +
-      '<div style="margin-top:5px;color:#64748B;">Координаты: ' + latlng.lat.toFixed(5) + ', ' + latlng.lng.toFixed(5) + '</div>';
+      '<div style="margin-top:6px;"><b>Low-salinity-risk score:</b> ' + pct + ' out of 100 (' + scoreText + ')</div>' +
+      '<div><b>Estimated salinity risk (&gt;1%):</b> ' + saline + ' out of 100, per the V6 model</div>' +
+      '<div><b>Zone class:</b> ' + info.label + '</div>';
+    panelDetail.innerHTML = '<b>What to do:</b> ' + info.advice +
+      '<div style="margin-top:5px;color:#64748B;">Coordinates: ' + latlng.lat.toFixed(5) + ', ' + latlng.lng.toFixed(5) + '</div>';
   }}
 
   img.onload = function() {{
@@ -362,13 +390,28 @@ def main() -> None:
 
     folium.raster_layers.ImageOverlay(
         image=zrgba, bounds=bounds, opacity=0.80,
-        name="Зоны риска соли V6", show=True, pixelated=True,
+        name="V6 salinity risk zones", show=True, pixelated=True,
     ).add_to(m)
 
     if score_ok:
         folium.raster_layers.ImageOverlay(
             image=srgba, bounds=bounds, opacity=0.80,
-            name="Балл V6: ниже риск соли (0..1)", show=False, pixelated=True,
+            name="V6 score: higher = lower salinity risk (0..1)", show=False, pixelated=True,
+        ).add_to(m)
+
+    aoi_feature = load_aoi_boundary_geojson()
+    if aoi_feature is not None:
+        folium.GeoJson(
+            aoi_feature,
+            name="AOI boundary (1960 shoreline)",
+            style_function=lambda f: {
+                "color": "#38BDF8",
+                "weight": 1.5,
+                "fill": False,
+                "opacity": 0.85,
+                "dashArray": "4 3",
+            },
+            show=True,
         ).add_to(m)
 
     folium.LayerControl(collapsed=False).add_to(m)
@@ -378,29 +421,29 @@ def main() -> None:
             background:white; padding:10px 14px; border-radius:8px;
             box-shadow:0 0 10px rgba(0,0,0,0.15); font-size:13px;
             font-family:'Segoe UI',Arial,sans-serif; max-width:270px;">
-    <b style="font-size:14px;">Как читать карту</b><br>
+    <b style="font-size:14px;">How to read this map</b><br>
 """
     for cls in (1, 3, 4, 10, 0):
         r, g, b, a = PALETTE[cls]
         sw = "background:#ffffff;border:1px solid #bbb;" if cls == 0 else f"background:rgb({r},{g},{b});"
         legend += (f'<span style="display:inline-block;width:12px;height:12px;'
                    f'{sw}border-radius:2px;margin-right:6px;"></span>'
-                   f'{DISPLAY_NAMES_RU[cls]}<br>')
+                   f'{DISPLAY_NAMES_EN[cls]}<br>')
     legend += """
     <hr style="margin:6px 0;">
-    <b style="font-size:12px;">Наведите на карту</b>
+    <b style="font-size:12px;">Hover over the map</b>
     <div style="margin-top:4px; color:#555; font-size:12px; line-height:1.3;">
-        Справа появится вывод по выбранной точке: балл 0–100, риск соли и следующий шаг.
+        A result for the selected point will appear on the right: a 0-100 score, salinity risk, and the next step.
     </div>
     <div style="height:10px; margin:5px 0 3px 0; border-radius:999px;
                 background:linear-gradient(90deg,#991B1B 0%,#FDE68A 50%,#065F46 100%);
                 border:1px solid #ddd;"></div>
     <div style="display:flex; justify-content:space-between; font-size:11px; color:#444;">
-        <span>0.0 высокий риск соли</span><span>1.0 низкий риск</span>
+        <span>0.0 high salinity risk</span><span>1.0 low risk</span>
     </div>
     <hr style="margin:6px 0;">
     <span style="color:#666;font-size:11px;">__METRIC_NOTE__<br>
-    Зоны 3/4 — сила засоления по NDMI. Решение всегда подтверждается полевой пробой.</span>
+    Zones 3/4 show salinity severity from NDMI. Always confirm with a field soil sample before any decision.</span>
 </div>
 """
     legend = legend.replace("__METRIC_NOTE__", metric_note(metrics))

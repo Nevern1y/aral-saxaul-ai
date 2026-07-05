@@ -9,7 +9,9 @@ import sys, time, struct, math, os
 import numpy as np
 from pathlib import Path
 import rasterio
-from rasterio.transform import from_bounds
+from rasterio.transform import from_bounds, from_origin
+from rasterio.warp import reproject, Resampling
+from rasterio.crs import CRS
 from scipy.ndimage import sobel
 
 sys.stdout.reconfigure(encoding='utf-8')
@@ -46,11 +48,16 @@ for lat, lon in sorted(tiles):
     print(f"  N{lat:02d}E{lon:03d}.hgt", flush=True)
 
 # ── 2. Download missing tiles ─────────────────────────────────────────
-import srtm
-geo = srtm.get_data(srtm1=False, srtm3=True)
-
 cache_dir = Path(os.path.expanduser("~")) / ".cache" / "srtm"
 cache_dir.mkdir(parents=True, exist_ok=True)
+
+_all_cached = all((cache_dir / f"N{lat:02d}E{lon:03d}.hgt").exists() for lat, lon in tiles)
+geo = None
+if not _all_cached:
+    import srtm  # only needed to fetch tiles not already on disk
+    geo = srtm.get_data(srtm1=False, srtm3=True)
+else:
+    print("\nAll required SRTM tiles already cached locally — skipping download step.", flush=True)
 
 for lat, lon in tiles:
     fname = f"N{lat:02d}E{lon:03d}.hgt"
@@ -126,10 +133,19 @@ for lat, lon in tiles:
     tile_row_end = int(round((tile_top - ov_bottom) * cells_per_deg))
     tile_col_end = int(round((ov_right - tile_left) * cells_per_deg))
 
-    # Pixel coordinates within mosaic
-    mos_row_start = int(round((ov_bottom - LAT_MIN) * cells_per_deg))
+    # Pixel coordinates within mosaic.
+    # BUGFIX (F3b, independent of the zoom() resampling bug): the mosaic
+    # array must use the standard north-up raster convention (row 0 = LAT_MAX,
+    # row increases southward) to match the north-up `src_transform` built
+    # below via from_bounds(LON_MIN, LAT_MIN, LON_MAX, LAT_MAX, ncols, nrows)
+    # for rasterio.warp.reproject(). The previous formula placed row 0 at
+    # LAT_MIN (south-up), silently flipping the mosaic vertically relative
+    # to every transform that assumes north-up — verified against 9 ground
+    # truth points read directly from the raw .hgt tiles (exact 0.0m match
+    # with this fix; ~23-74m error with the old south-up formula).
+    mos_row_start = int(round((LAT_MAX - ov_top) * cells_per_deg))
     mos_col_start = int(round((ov_left - LON_MIN) * cells_per_deg))
-    mos_row_end = int(round((ov_top - LAT_MIN) * cells_per_deg))
+    mos_row_end = int(round((LAT_MAX - ov_bottom) * cells_per_deg))
     mos_col_end = int(round((ov_right - LON_MIN) * cells_per_deg))
 
     h = tile_row_end - tile_row_start
@@ -187,8 +203,20 @@ print(f"  Slope computed: {t2-t1:.1f}s", flush=True)
 print(f"  Slope range: {np.nanmin(slope):.2f}° – {np.nanmax(slope):.2f}°", flush=True)
 print(f"  Slope > 5°: {np.sum(slope > 5):,} px ({np.sum(slope > 5) / valid_mask.sum() * 100:.1f}%)", flush=True)
 
-# ── 5. Resample to match VRT grid ─────────────────────────────────────
-print(f"\nResampling to feature stack grid (30m)...", flush=True)
+# ── 5. Resample to match VRT grid (coordinate-aware reprojection) ────
+# FIX (F3, AOI_COVERAGE_DIAGNOSIS.md): the previous implementation used
+# scipy.ndimage.zoom() with naive index-space scale factors (ref_size / mosaic_size).
+# That silently assumes the source mosaic and destination grid cover the SAME
+# geographic footprint and only differ in sampling density -- false whenever the
+# two grids were built for different bboxes (as they were here: this mosaic spans
+# the WIDE bbox 57.5-62.0E/43.3-46.7N, while feature_stack_30m.vrt's reference grid
+# spans the OLD/NARROW bbox 58.0-62.0E/43.5-46.5N). zoom() has no notion of
+# lon/lat and mislabels every pixel's coordinates as a result.
+# Fix: use rasterio.warp.reproject, which is fully coordinate-aware -- it reads
+# the source array against its own explicit geotransform/CRS and resamples onto
+# the destination array's geotransform/CRS, correctly clipping/placing pixels by
+# true geographic location regardless of extent mismatch between the two grids.
+print(f"\nResampling to feature stack grid (30m, coordinate-aware reproject)...", flush=True)
 
 # Read one window from VRT to get exact grid
 vrt_path = BASE / "outputs/data/feature_stack_30m.vrt"
@@ -200,26 +228,48 @@ with rasterio.open(vrt_path) as ref_src:
 
 print(f"  Reference grid: {ref_width}x{ref_height}, CRS={ref_crs}", flush=True)
 
-# Resample slope to reference grid using scipy
-from scipy.ndimage import zoom
+# Explicit source geotransform for the SRTM mosaic: it covers
+# [LON_MIN, LON_MAX] x [LAT_MIN, LAT_MAX] over (nrows, ncols) pixels, top-left origin.
+src_transform = from_bounds(LON_MIN, LAT_MIN, LON_MAX, LAT_MAX, ncols, nrows)
+src_crs = CRS.from_epsg(4326)
+if ref_crs is None:
+    ref_crs = src_crs
 
-scale_y = ref_height / nrows
-scale_x = ref_width / ncols
-print(f"  Scale factors: x={scale_x:.4f}, y={scale_y:.4f}", flush=True)
-
-# Fill NaN for resampling
+# Fill NaN for resampling (bilinear reprojection cannot carry NaN through cleanly)
 slope_filled = slope.copy()
 nan_mask = np.isnan(slope_filled)
 if nan_mask.any():
     slope_filled[nan_mask] = 0.0  # flat terrain where no data
 
-slope_resampled = zoom(slope_filled, (scale_y, scale_x), order=1)
-# Re-apply valid mask resampled
-valid_resampled = zoom(valid_mask.astype(np.float32), (scale_y, scale_x), order=0) > 0.5
-slope_resampled[~valid_resampled] = np.nan
+slope_resampled = np.full((ref_height, ref_width), np.nan, dtype=np.float32)
+reproject(
+    source=slope_filled,
+    destination=slope_resampled,
+    src_transform=src_transform,
+    src_crs=src_crs,
+    dst_transform=ref_transform,
+    dst_crs=ref_crs,
+    resampling=Resampling.bilinear,
+    src_nodata=None,
+    dst_nodata=np.nan,
+)
 
-# Ensure correct shape (handle rounding)
-slope_resampled = slope_resampled[:ref_height, :ref_width]
+# Re-apply valid mask, reprojected the same coordinate-aware way (nearest-neighbor
+# so the boolean mask isn't blurred into fractional values).
+valid_resampled_f = np.zeros((ref_height, ref_width), dtype=np.float32)
+reproject(
+    source=valid_mask.astype(np.float32),
+    destination=valid_resampled_f,
+    src_transform=src_transform,
+    src_crs=src_crs,
+    dst_transform=ref_transform,
+    dst_crs=ref_crs,
+    resampling=Resampling.nearest,
+    src_nodata=None,
+    dst_nodata=0.0,
+)
+valid_resampled = valid_resampled_f > 0.5
+slope_resampled[~valid_resampled] = np.nan
 
 t3 = time.time()
 print(f"  Resampled: {slope_resampled.shape}, {t3-t2:.1f}s", flush=True)
@@ -256,9 +306,19 @@ elev_nan_mask = np.isnan(elev_for_export)
 if elev_nan_mask.any():
     elev_for_export[elev_nan_mask] = np.nanmin(elev_for_export)
 
-elev_resampled = zoom(elev_for_export, (scale_y, scale_x), order=1)
+elev_resampled = np.full((ref_height, ref_width), np.nan, dtype=np.float32)
+reproject(
+    source=elev_for_export,
+    destination=elev_resampled,
+    src_transform=src_transform,
+    src_crs=src_crs,
+    dst_transform=ref_transform,
+    dst_crs=ref_crs,
+    resampling=Resampling.bilinear,
+    src_nodata=None,
+    dst_nodata=np.nan,
+)
 elev_resampled[~valid_resampled] = np.nan
-elev_resampled = elev_resampled[:ref_height, :ref_width]
 
 with rasterio.open(ELEV_OUT_PATH, "w", **profile) as dst:
     dst.write(elev_resampled.astype(np.float32), 1)

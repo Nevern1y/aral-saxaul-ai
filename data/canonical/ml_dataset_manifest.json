@@ -48,13 +48,13 @@
       "n": 28
     },
     {
-      "feature": "prof_salt_cl_pct",
+      "feature": "top_salt_cl_pct",
       "spearman_rho": -0.265,
       "p_value": 0.0659,
       "n": 49
     },
     {
-      "feature": "top_salt_cl_pct",
+      "feature": "prof_salt_cl_pct",
       "spearman_rho": -0.265,
       "p_value": 0.0659,
       "n": 49
@@ -78,13 +78,13 @@
       "n": 52
     },
     {
-      "feature": "top_sand_pct",
+      "feature": "prof_sand_pct",
       "spearman_rho": 0.209,
       "p_value": 0.1594,
       "n": 47
     },
     {
-      "feature": "prof_sand_pct",
+      "feature": "top_sand_pct",
       "spearman_rho": 0.209,
       "p_value": 0.1594,
       "n": 47

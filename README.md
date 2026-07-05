@@ -45,9 +45,9 @@ The dashboard has three tabs:
 
 | Tab | Purpose |
 |---|---|
-| **Карта и итоги** | V6 salinity-risk map, headline metrics, practical interpretation, V5.1 detail layer |
-| **Проверка и данные** | What the result can/cannot be used for, validation numbers, specialist expanders |
-| **Планирование работ** | Road/access filters, practical defaults, KML ZIP export, resource estimate with warnings |
+| **Map and summary** | V6 salinity-risk map, headline metrics, practical interpretation, V5.1 detail layer |
+| **Checks and data** | What the result can/cannot be used for, validation numbers, specialist expanders |
+| **Work planning** | Road/access filters, practical defaults, KML ZIP export, resource estimate with warnings |
 
 The V6 map includes an interactive decision panel. On hover/click it shows:
 
@@ -138,6 +138,10 @@ The project tested a direct saxaul classifier, but it is not decision-grade.
 This is why the current science is anchored on salinity. The project does **not**
 claim that V6 predicts survival or planting success. It claims that V6 estimates a
 key limiting factor: topsoil salinity risk.
+
+**A note on the saxaul field-evidence pattern.** Beyond the direct classifier above, the project also holds a small set of field pits where soil chemists recorded whether saxaul was actually present or absent, alongside soil chemistry. Only 6 pits in the whole dataset carry a confirmed saxaul-present label. Correlations between salinity-related soil properties (chloride, exchangeable sodium, carbonate, texture) and saxaul presence in these pits run in ecologically sensible directions (saxaul favors lower chloride, lower sodium, more carbonate, sandier soil) but every one falls below the project's own stability gates (MIN_N=12, MIN_N_POS=8, MIN_AUC=0.62) and is flagged `indicative_only` in the data.
+
+Field notes also include documented plantation failures and barren, vegetation-free pits with no saxaul, plus at least one pit where saxaul was growing successfully alongside other salt-tolerant shrubs on salt-affected ground. Per the labeling guardrails in `SAXAUL_LABELS_QA.md`, these negative labels are assigned from documented outcomes (failure to establish, genuine bareness), not from measured salinity itself, so not every "no saxaul" record is a high-salinity site. Treat all of this as a screening hint about a limiting factor, not as a validated ecological model, and never as proof that any specific site will or will not support saxaul.
 
 ---
 
@@ -296,8 +300,8 @@ link predictions to real saxaul survival outcomes.
 - Only about 15 of 70 training profiles are inside the 1960 seabed AOI.
 - Cross-region absolute scores drift; local ranking is more defensible.
 - The 30 m stack has no Sentinel-2 SCL water mask.
-- The 30 m slope band is too sparse for a slope gate.
-- V5.1 10 m validation has only 14 valid production pixels at the V6 soil points.
+- The 30 m slope band is finite for only about 33% of the AOI (flat seabed terrain, not a missing-data gap); this is too sparse for a slope gate.
+- V5.1 10 m validation has only 14 valid production pixels at the V6 soil points (10 m NDMI vs. measured salinity correlation is not significant, rho approx 0.42, p approx 0.13); recalibration is deferred until a future campaign yields n>=30 valid 10 m points (trigger defined in scripts/v6/calibrate_thresholds.py).
 - Direct saxaul labels are too few for a reliable survival model.
 - Remote sensing cannot replace root-zone salinity, groundwater depth, field EC,
   or agronomic inspection.

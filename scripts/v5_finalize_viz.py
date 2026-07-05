@@ -45,13 +45,13 @@ PALETTE = {
     5:  "#1F2937",   # OBSTACLE_TOPO
     10: "#A7F3D0",   # VEGETATION
 }
-DISPLAY_NAMES_RU = {
-    0: "Вода / тень / нет данных",
-    1: "Кандидатные зоны",
-    3: "Риск сухой соли",
-    4: "Риск влажной рапы",
-    5: "Сложный рельеф",
-    10: "Есть растительность",
+DISPLAY_NAMES = {
+    0: "Water / shadow / no data",
+    1: "Candidate zones",
+    3: "Dry salt risk",
+    4: "Wet brine risk",
+    5: "Steep terrain",
+    10: "Existing vegetation",
 }
 t0 = time.time()
 print("=" * 56)
@@ -214,7 +214,7 @@ folium.raster_layers.ImageOverlay(
     image=str(png_path),
     bounds=img_bounds,
     opacity=0.80,
-    name="Карта предварительного отбора V5.1",
+    name="V5.1 preliminary screening map",
 ).add_to(m)
 
 # AOI bounding box (dashed white, faint fill)
@@ -238,7 +238,7 @@ legend_html = """
     <b style="font-size:14px;">Aral Saxaul V5.1</b><br>
 """
 for cls in sorted(PALETTE):
-    name = DISPLAY_NAMES_RU.get(cls, CLASS_NAMES.get(cls, f"Класс {cls}"))
+    name = DISPLAY_NAMES.get(cls, CLASS_NAMES.get(cls, f"Class {cls}"))
     hex_c = PALETTE[cls]
     legend_html += (
         f'<span style="display:inline-block;width:12px;height:12px;'
@@ -247,7 +247,7 @@ for cls in sorted(PALETTE):
     )
 legend_html += """
     <hr style="margin:6px 0;">
-    <span style="color:#666;font-size:11px;">Предварительная карта | категориальный фильтр 3x3 | маска воды и теней</span>
+    <span style="color:#666;font-size:11px;">Preliminary screening map | 3x3 categorical filter | water/shadow mask</span>
 </div>
 """
 m.get_root().html.add_child(folium.Element(legend_html))
