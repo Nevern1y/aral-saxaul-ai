@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document id="root_doc">
+<Schema name="task_grid_v6_45.38_60.68" id="task_grid_v6_45.38_60.68">
+	<SimpleField name="area_ha" type="float"></SimpleField>
+	<SimpleField name="low_risk_ha" type="float"></SimpleField>
+	<SimpleField name="moderate_risk_ha" type="float"></SimpleField>
+	<SimpleField name="grid_cell_deg" type="string"></SimpleField>
+</Schema>
+<Folder><name>task_grid_v6_45.38_60.68</name>
+  <Placemark id="task_grid_v6_45.38_60.68.1">
+	<name>task_grid_v6_45.38_60.68</name>
+	<name>0</name>
+	<description>212</description>
+	<Style><LineStyle><color>ff0000ff</color></LineStyle><PolyStyle><fill>0</fill></PolyStyle></Style>
+	<ExtendedData><SchemaData schemaUrl="#task_grid_v6_45.38_60.68">
+		<SimpleData name="area_ha">212</SimpleData>
+		<SimpleData name="low_risk_ha">0.1</SimpleData>
+	</SchemaData></ExtendedData>
+      <MultiGeometry><Polygon><outerBoundaryIs><LinearRing><coordinates>60.6300833026073,45.3599811139732 60.635473194312,45.3599811139732 60.6381681401644,45.3572861681208 60.6435580318691,45.3599811139732 60.6462529777214,45.3572861681208 60.6489479235738,45.3626760598255 60.6529903423523,45.358633641047 60.6489479235738,45.3518962764161 60.6462529777214,45.3545912222685 60.6435580318691,45.3518962764161 60.6381681401644,45.3545912222685 60.635473194312,45.3492013305637 60.6300833026073,45.3465063847114 60.6263910613787,45.3487217294485 60.6263910613787,45.3542587904764 60.6273883567549,45.3545912222685 60.6300833026073,45.3599811139732</coordinates></LinearRing></outerBoundaryIs></Polygon><Polygon><outerBoundaryIs><LinearRing><coordinates>60.6839822196545,45.3707608973826 60.6866771655068,45.3680659515303 60.6920670572115,45.3680659515303 60.6920670572115,45.3626760598255 60.6866771655068,45.3626760598255 60.6826347467283,45.3694134244564 60.6839822196545,45.3707608973826</coordinates></LinearRing></outerBoundaryIs></Polygon></MultiGeometry>
+  </Placemark>
+</Folder>
+</Document></kml>

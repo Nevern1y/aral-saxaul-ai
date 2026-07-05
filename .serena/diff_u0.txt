@@ -1,0 +1,1049 @@
+diff --git a/app.py b/app.py
+index f31e272..1d14942 100644
+--- a/app.py
++++ b/app.py
+@@ -52 +52 @@ V6_PIT_TABLE_PATH = CANON_DIR / "suitability_v6_pit_validation.csv"
+-st.set_page_config(page_title="Aral Saxaul: Платформа Фитомелиорации", layout="wide")
++st.set_page_config(page_title="Aral Saxaul: Land Restoration Platform", layout="wide")
+@@ -54 +54 @@ if not hasattr(st, "iframe"):
+-    st.error("Нужен Streamlit 1.57+ для отображения интерактивных карт.")
++    st.error("This dashboard needs Streamlit 1.57 or newer to show interactive maps.")
+@@ -57 +57 @@ if not hasattr(st, "iframe"):
+-# UI/UX: ограничение ширины дашборда для комфортного чтения на широких экранах
++# UI/UX: limit the dashboard width for comfortable reading on wide screens
+@@ -236 +236 @@ def render_technical_commands(commands):
+-    with st.expander("Для технического специалиста"):
++    with st.expander("For technical users"):
+@@ -254,7 +254,7 @@ def make_audit_fig(pixels_json_str, total_px_int):
+-        "Зона": [
+-            "Кандидатные зоны",
+-            "Есть растительность",
+-            "Риск влажной рапы",
+-            "Риск сухой соли",
+-            "Сложный рельеф",
+-            "Вода / тень / нет данных",
++        "Zone": [
++            "Candidate zone (low salinity)",
++            "Existing vegetation",
++            "Wet brine risk",
++            "Dry salt risk",
++            "Steep terrain",
++            "Water / shadow / no data",
+@@ -262 +262 @@ def make_audit_fig(pixels_json_str, total_px_int):
+-        "Доля (%)": [
++        "Share (%)": [
+@@ -270,6 +270,6 @@ def make_audit_fig(pixels_json_str, total_px_int):
+-        "Кандидатные зоны": "#2ecc40",
+-        "Есть растительность": "#7FCDBB",
+-        "Риск влажной рапы": "#D95F02",
+-        "Риск сухой соли": "#E6AB02",
+-        "Сложный рельеф": "#636363",
+-        "Вода / тень / нет данных": "#BDBDBD",
++        "Candidate zone (low salinity)": "#2ecc40",
++        "Existing vegetation": "#7FCDBB",
++        "Wet brine risk": "#D95F02",
++        "Dry salt risk": "#E6AB02",
++        "Steep terrain": "#636363",
++        "Water / shadow / no data": "#BDBDBD",
+@@ -280,3 +280,3 @@ def make_audit_fig(pixels_json_str, total_px_int):
+-        values="Доля (%)",
+-        names="Зона",
+-        color="Зона",
++        values="Share (%)",
++        names="Zone",
++        color="Zone",
+@@ -291 +291 @@ def make_audit_fig(pixels_json_str, total_px_int):
+-st.title("Aral Saxaul V6: предварительный отбор участков по риску засоления")
++st.title("Aral Saxaul V6: preliminary screening of sites by salinity risk")
+@@ -294,3 +294,3 @@ st.markdown(
+-    "Карта помогает выбрать, куда ехать на полевую проверку: она оценивает риск засоления, "
+-    "подсказывает следующий шаг по выбранной точке и не заменяет почвенную пробу или решение о посадке. "
+-    "V6 — основной слой, V5.1 используется как детализация и основа KML-планирования."
++    "This map helps you choose where to go for a field check. It estimates salinity risk, "
++    "suggests the next step for the site you select, and does not replace a soil sample or a planting decision. "
++    "V6 is the main layer; V5.1 gives extra detail and is the basis for KML route planning."
+@@ -302,3 +302,3 @@ tab_analytics, tab_dev, tab_logistics = st.tabs([
+-    "Карта и итоги",
+-    "Проверка и данные",
+-    "Планирование работ",
++    "Map and summary",
++    "Checks and data",
++    "Work planning",
+@@ -308 +308 @@ tab_analytics, tab_dev, tab_logistics = st.tabs([
+-# TAB 1: 📍 Карта рабочих участков
++# TAB 1: 📍 Map of work sites
+@@ -312 +312 @@ with tab_logistics:
+-    st.subheader("Планирование полевого выезда")
++    st.subheader("Field visit planning")
+@@ -314,2 +314,2 @@ with tab_logistics:
+-        "Рабочий порядок: 1) выберите доступные по дороге участки, 2) скачайте KML, "
+-        "3) проверьте почву и координаты в поле, 4) только после этого считайте посадку и бюджет."
++        "Steps: 1) choose sites with road access, 2) download the KML files, "
++        "3) check the soil and coordinates in the field, 4) only then plan planting and budget."
+@@ -322 +322 @@ with tab_logistics:
+-        st.warning("Данные планирования не загружены. Карта V6 доступна, но KML-наряды пока нельзя показать.")
++        st.warning("Planning data is not loaded. The V6 map is available, but the KML task files cannot be shown yet.")
+@@ -329 +329 @@ with tab_logistics:
+-            st.caption("Планирование ниже построено только по участкам внутри территории Казахстана.")
++            st.caption("The planning below only covers sites inside Kazakhstan's territory.")
+@@ -337 +337 @@ with tab_logistics:
+-        access_options = {"Любые дороги OSM": "distance_to_road_km"}
++        access_options = {"Any OSM road": "distance_to_road_km"}
+@@ -339 +339 @@ with tab_logistics:
+-            access_options["Казахстанский подъезд"] = "distance_to_kazakhstan_road_km"
++            access_options["Kazakhstan road access"] = "distance_to_kazakhstan_road_km"
+@@ -346 +346 @@ with tab_logistics:
+-                "Как считать подъезд:",
++                "How to measure road access:",
+@@ -348,2 +348,2 @@ with tab_logistics:
+-                index=1 if "Казахстанский подъезд" in access_options else 0,
+-                help="Для первого выезда обычно лучше считать подъезд со стороны Казахстана, если этот слой есть.",
++                index=1 if "Kazakhstan road access" in access_options else 0,
++                help="For the first field visit, it is usually better to measure access from the Kazakhstan side, if this layer is available.",
+@@ -356,3 +356,3 @@ with tab_logistics:
+-                "Близко к дорогам (до 120 км)": 120.0,
+-                "Дальние выезды (до 250 км от дорог)": 250.0,
+-                "Показать весь охват": max_dist,
++                "Close to roads (up to 120 km)": 120.0,
++                "Far visits (up to 250 km from roads)": 250.0,
++                "Show full coverage": max_dist,
+@@ -361 +361 @@ with tab_logistics:
+-                "Доступность по дорогам:",
++                "Road access:",
+@@ -364 +364 @@ with tab_logistics:
+-                help="Рекомендуемый старт — близко к дорогам. Так проще проверить модель в поле без дорогой экспедиции.",
++                help="We recommend starting close to roads. This makes it easier to check the model in the field without a costly expedition.",
+@@ -370,4 +370,4 @@ with tab_logistics:
+-                "Малые участки (10-1 000 га)": (10, 1000),
+-                "Крупные участки (1 000-5 000 га)": (1000, 5000),
+-                "Очень крупные участки (>5 000 га)": (5000, int(max_cell_ha)),
+-                "Все размеры": (0, int(max_cell_ha)),
++                "Small sites (10-1,000 ha)": (10, 1000),
++                "Large sites (1,000-5,000 ha)": (1000, 5000),
++                "Very large sites (>5,000 ha)": (5000, int(max_cell_ha)),
++                "All sizes": (0, int(max_cell_ha)),
+@@ -376 +376 @@ with tab_logistics:
+-                "Размер участка:",
++                "Site size:",
+@@ -379 +379 @@ with tab_logistics:
+-                help="Для первичной проверки удобнее малые и средние участки: меньше риск, проще объехать и отобрать пробы.",
++                help="Small and medium sites are easier for an initial check: lower risk, easier to visit, and easier to sample.",
+@@ -393,3 +393,3 @@ with tab_logistics:
+-            "Площадь выбранных участков",
+-            f"{selected_area_ha:,.0f} га",
+-            help="Сумма ячеек, которые прошли текущие фильтры. Это не план посадки до полевой проверки.",
++            "Area of selected sites",
++            f"{selected_area_ha:,.0f} ha",
++            help="Total area of the cells that pass the current filters. This is not a planting plan until sites are checked in the field.",
+@@ -397,2 +397,2 @@ with tab_logistics:
+-        col_m2.metric("Выбрано ячеек", f"{len(filtered):,}")
+-        col_m3.metric("Всего в индексе", f"{len(tasks_df):,}")
++        col_m2.metric("Cells selected", f"{len(filtered):,}")
++        col_m3.metric("Total in index", f"{len(tasks_df):,}")
+@@ -400 +400 @@ with tab_logistics:
+-            "Доля площади индекса",
++            "Share of index area",
+@@ -406,2 +406,2 @@ with tab_logistics:
+-                f"Для справки: вся V5.1 candidate-оценка по AOI — {full_aoi_ha:,.0f} га. "
+-                "Здесь фильтруется только индекс KML-участков для выезда."
++                f"For reference: the full V5.1 candidate-zone estimate for the AOI is {full_aoi_ha:,.0f} ha. "
++                "This filter only covers the KML site index used for field visits."
+@@ -420 +420 @@ with tab_logistics:
+-                name="Дороги (OSM)",
++                name="Roads (OSM)",
+@@ -450 +450 @@ with tab_logistics:
+-                name="Участки для проверки",
++                name="Sites to check",
+@@ -457 +457 @@ with tab_logistics:
+-                    aliases=["Файл:", "Площадь (га):", "До выбранной дороги (км):", "До дороги KZ (км):"],
++                    aliases=["File:", "Area (ha):", "To selected road (km):", "To KZ road (km):"],
+@@ -479 +479 @@ with tab_logistics:
+-            "На карте: зелёные квадраты — участки, прошедшие фильтры; маркеры — 5 ближайших к выбранной дороге точек для первого выезда."
++            "On the map: green squares are sites that pass the filters; markers show the 5 sites closest to the selected road, for the first field visit."
+@@ -483 +483 @@ with tab_logistics:
+-        with st.expander("Маршрутные файлы KML", expanded=True):
++        with st.expander("KML route files", expanded=True):
+@@ -485,2 +485,2 @@ with tab_logistics:
+-                "KML можно открыть в GPS-навигаторе, Google Earth или QGIS. Начните с ближайших участков, "
+-                "а решение о посадке принимайте только после почвенной проверки."
++                "You can open these KML files in a GPS device, Google Earth, or QGIS. Start with the closest sites, "
++                "and make any planting decision only after a soil check."
+@@ -488 +488 @@ with tab_logistics:
+-            st.caption(f"Маршрутные KML лежат в `{rel_path(KML_TASKS_DIR)}`.")
++            st.caption(f"KML route files are stored in `{rel_path(KML_TASKS_DIR)}`.")
+@@ -495,2 +495,2 @@ with tab_logistics:
+-                "Файл KML", "Широта", "Долгота", "Площадь (га)", "До любой дороги (км)",
+-                *(["До дороги KZ (км)"] if "distance_to_kazakhstan_road_km" in filtered.columns else []),
++                "KML file", "Latitude", "Longitude", "Area (ha)", "Distance to any road (km)",
++                *(["Distance to KZ road (km)"] if "distance_to_kazakhstan_road_km" in filtered.columns else []),
+@@ -506 +506 @@ with tab_logistics:
+-                    "Скачать первые 25 KML по текущему фильтру",
++                    "Download the first 25 KML files for the current filter",
+@@ -510 +510 @@ with tab_logistics:
+-                    help="Файлы отсортированы текущей таблицей по расстоянию до выбранной дороги.",
++                    help="Files are sorted by the current table, by distance to the selected road.",
+@@ -513 +513 @@ with tab_logistics:
+-                st.info(f"KML-файлы не найдены в `{rel_path(KML_TASKS_DIR)}`.")
++                st.info(f"No KML files found in `{rel_path(KML_TASKS_DIR)}`.")
+@@ -516 +516 @@ with tab_logistics:
+-            "Расчёт ресурсов ниже не является планом посадки. Сначала подтвердите выбранные участки в поле."
++            "The resource estimate below is not a planting plan. First confirm the selected sites in the field."
+@@ -518 +518 @@ with tab_logistics:
+-        with st.expander("Предварительная оценка ресурсов после полевой проверки", expanded=False):
++        with st.expander("Preliminary resource estimate after a field check", expanded=False):
+@@ -520 +520 @@ with tab_logistics:
+-                "Не используйте этот расчёт как план посадки. Он нужен только для оценки масштаба после того, как участок подтвердили в поле."
++                "Do not use this estimate as a planting plan. It is only meant to show scale, after a site has been confirmed in the field."
+@@ -524 +524 @@ with tab_logistics:
+-                    "Плотность посадки (саженцев/га)",
++                    "Planting density (seedlings/ha)",
+@@ -528 +528 @@ with tab_logistics:
+-                    "Производительность трактора (га/смена)",
++                    "Tractor output (ha/shift)",
+@@ -532 +532 @@ with tab_logistics:
+-                    "Расход дизеля (л/га)",
++                    "Diesel use (L/ha)",
+@@ -540,4 +540,4 @@ with tab_logistics:
+-                col_r1.metric("Площадь в выбранном фильтре", f"{selected_area_ha:,.0f} га")
+-                col_r2.metric("Саженцы", f"{total_saplings:,}")
+-                col_r3.metric("Машино-смены", f"{total_machine_shifts:,.0f}")
+-                st.metric("Дизель, примерно", f"{total_fuel:,.0f} л")
++                col_r1.metric("Area in the current filter", f"{selected_area_ha:,.0f} ha")
++                col_r2.metric("Seedlings", f"{total_saplings:,}")
++                col_r3.metric("Machine-shifts", f"{total_machine_shifts:,.0f}")
++                st.metric("Diesel, approximate", f"{total_fuel:,.0f} L")
+@@ -545 +545 @@ with tab_logistics:
+-                st.info("По текущим фильтрам участков нет.")
++                st.info("No sites match the current filters.")
+@@ -548 +548 @@ with tab_logistics:
+-# TAB 2: 📊 Общая статистика
++# TAB 2: 📊 Overall statistics
+@@ -563 +563 @@ with tab_analytics:
+-        st.warning("Данные V5.1 для детализации не загружены. Основная карта V6 остаётся доступной.")
++        st.warning("V5.1 detail data is not loaded. The main V6 map is still available.")
+@@ -581,3 +581,3 @@ with tab_analytics:
+-        "Низкий риск соли V6",
+-        f"{v6_low_salt_ha:,.0f} га" if v6_low_salt_ha else "—",
+-        help="Зона V6 с низким риском засоления. Это кандидаты для проверки, не готовая площадь посадки.",
++        "Low salinity risk (V6)",
++        f"{v6_low_salt_ha:,.0f} ha" if v6_low_salt_ha else "—",
++        help="V6 zone with low salinity risk. These are candidates to check, not a ready planting area.",
+@@ -586 +586 @@ with tab_analytics:
+-        "Оценено V6",
++        "Scored by V6",
+@@ -588 +588 @@ with tab_analytics:
+-        help="Доля расчетной области, где V6 смогла дать оценку риска соли.",
++        help="Share of the study area where V6 could produce a salinity-risk score.",
+@@ -591 +591 @@ with tab_analytics:
+-        "Проверка модели",
++        "Model validation",
+@@ -593,2 +593,2 @@ with tab_analytics:
+-        delta=f"ДИ {v6_ci[0]:.3f}–{v6_ci[1]:.3f}" if v6_ci else None,
+-        help="LOO AUC: способность модели отличать солёные почвенные профили от несолёных.",
++        delta=f"CI {v6_ci[0]:.3f}-{v6_ci[1]:.3f}" if v6_ci else None,
++        help="LOO AUC: how well the model tells saline soil profiles apart from non-saline ones.",
+@@ -597 +597 @@ with tab_analytics:
+-        "KML-контуров V5.1",
++        "V5.1 KML contours",
+@@ -599 +599 @@ with tab_analytics:
+-        help="Вспомогательные контуры V5.1 для организации полевых выездов.",
++        help="Helper-layer V5.1 contours used to organize field visits.",
+@@ -602,2 +602,2 @@ with tab_analytics:
+-    # ── Карта на самом видном месте: V6 главная, V5.1 как слой детализации ──
+-    st.markdown("### Карта риска соли V6 (предварительный отбор)")
++    # ── Map in the most visible spot: V6 is the headline, V5.1 gives extra detail ──
++    st.markdown("### V6 salinity-risk map (preliminary screening)")
+@@ -608 +608 @@ with tab_analytics:
+-        ci_txt = f", 95% ДИ {ci[0]:.3f}–{ci[1]:.3f}" if ci else ""
++        ci_txt = f", 95% CI {ci[0]:.3f}-{ci[1]:.3f}" if ci else ""
+@@ -611,3 +611,3 @@ with tab_analytics:
+-            "Как пользоваться: наведите курсор на цветной участок или нажмите на него. "
+-            "Панель на карте покажет балл 0–100, риск соли и практический следующий шаг. "
+-            "Зелёный цвет — не разрешение на посадку, а приоритет для полевой проверки."
++            "How to use this: hover over or click a colored site on the map. "
++            "The panel on the map shows a 0-100 score, the salinity risk, and a practical next step. "
++            "Green does not mean planting is approved. It means the site is a priority for a field check."
+@@ -615 +615 @@ with tab_analytics:
+-        with st.expander("Почему это только предварительный отбор"):
++        with st.expander("Why this is only preliminary screening"):
+@@ -617,4 +617,4 @@ with tab_analytics:
+-                f"V6 обучена на {n_txt} измеренных почвенных профилях и проверяет риск "
+-                f"засоления (LOO AUC {auc_txt}{ci_txt}). Она не знает приживаемость саксаула, "
+-                "глубину грунтовых вод и свежие полевые условия, поэтому окончательное решение "
+-                "принимается только после выезда и почвенной пробы."
++                f"V6 was trained on {n_txt} measured soil profiles and screens for salinity "
++                f"risk (LOO AUC {auc_txt}{ci_txt}). It does not know saxaul survival rates, "
++                "groundwater depth, or current field conditions. The final decision should only be "
++                "made after a field visit and a soil sample."
+@@ -624,2 +624,2 @@ with tab_analytics:
+-            f"Карта V6 не найдена: {V6_MAP_PATH.name}. "
+-            "Ниже показана карта V5.1, если она есть."
++            f"V6 map not found: {V6_MAP_PATH.name}. "
++            "The V5.1 map is shown below, if it exists."
+@@ -632,2 +632,2 @@ with tab_analytics:
+-    # V5.1 — детализация 10 м + источник логистики (сохранена, не удалена)
+-    with st.expander("Детальная карта V5.1 (10 м, правила Sentinel-2)", expanded=not V6_MAP_PATH.exists()):
++    # V5.1 — 10 m detail + source of logistics data (kept, not removed)
++    with st.expander("Detailed V5.1 map (10 m, Sentinel-2 rules)", expanded=not V6_MAP_PATH.exists()):
+@@ -637,2 +637,2 @@ with tab_analytics:
+-                "V5.1 — вспомогательный слой 10 м: помогает смотреть мелкие границы, воду/рельеф "
+-                "и формировать KML для выездов. Приоритет участка сверяйте с V6 и полевой пробой."
++                "V5.1 is a 10 m helper layer: it helps you see small boundaries, water/terrain, "
++                "and build KML files for field visits. Check site priority against V6 and a field soil sample."
+@@ -645 +645 @@ with tab_analytics:
+-                        label="Скачать полигоны участков (GeoJSON, >=10 га)",
++                        label="Download site polygons (GeoJSON, >=10 ha)",
+@@ -649 +649 @@ with tab_analytics:
+-                        help="Экспорт контуров candidate-зон (только кластеры ≥10 га) для GPS и дальнейшей полевой проверки",
++                        help="Exports candidate-zone (low salinity) contours (clusters >=10 ha only) for GPS use and further field checks.",
+@@ -653,2 +653,2 @@ with tab_analytics:
+-                        f"📥 Файл: `{V5_OPERATIONAL_PATH.name}` ({gj_size_mb:.0f} MB). "
+-                        "Копируйте из `outputs/data/`."
++                        f"📥 File: `{V5_OPERATIONAL_PATH.name}` ({gj_size_mb:.0f} MB). "
++                        "Copy it from `outputs/data/`."
+@@ -658,2 +658,2 @@ with tab_analytics:
+-                f"Файл карты V5.1 не найден: {V5_MAP_PATH.name}. "
+-                "Основная карта V6 от этого не зависит."
++                f"V5.1 map file not found: {V5_MAP_PATH.name}. "
++                "The main V6 map does not depend on this file."
+@@ -662 +662 @@ with tab_analytics:
+-    st.markdown("### Что делать с результатом")
++    st.markdown("### What to do with the result")
+@@ -665,3 +665,3 @@ with tab_analytics:
+-            "Если на карте": "Высокий балл и низкий риск соли",
+-            "Что это значит": "Участок стоит поставить выше в список полевой проверки.",
+-            "Следующее действие": "Сверить подъезд, открыть KML и взять почвенную пробу.",
++            "If the map shows": "High score and low salinity risk",
++            "What it means": "Put this site higher on the field-check list.",
++            "Next step": "Check road access, open the KML file, and take a soil sample.",
+@@ -670,3 +670,3 @@ with tab_analytics:
+-            "Если на карте": "Средний балл",
+-            "Что это значит": "Участок не исключён, но риск соли заметный.",
+-            "Следующее действие": "Проверять после лучших участков или как контрольную точку.",
++            "If the map shows": "Medium score",
++            "What it means": "The site is not ruled out, but salinity risk is notable.",
++            "Next step": "Check it after the best sites, or use it as a control point.",
+@@ -675,3 +675,3 @@ with tab_analytics:
+-            "Если на карте": "Высокий риск соли или уже есть растительность",
+-            "Что это значит": "Для новой посадки это слабый кандидат без дополнительных причин.",
+-            "Следующее действие": "Обычно пропустить или обследовать отдельно.",
++            "If the map shows": "High salinity risk, or existing vegetation",
++            "What it means": "This is a weak candidate for new planting unless there is another reason to check it.",
++            "Next step": "Usually skip it, or survey it separately.",
+@@ -682 +682 @@ with tab_analytics:
+-    with st.expander("Что посчитал вспомогательный слой V5.1 (10 м)"):
++    with st.expander("What the V5.1 helper layer (10 m) found"):
+@@ -684,2 +684,2 @@ with tab_analytics:
+-            "V5.1 делит территорию на 6 классов по Sentinel-2 с шагом 10 м. "
+-            "Он нужен для детализации и KML-планирования, а не как основной балл V6."
++            "V5.1 splits the area into 6 classes using Sentinel-2 imagery at 10 m resolution. "
++            "It is meant for extra detail and KML planning, not as the main V6 score."
+@@ -689,6 +689,6 @@ with tab_analytics:
+-                0: ("Вода / тень / нет данных", "Исключено: вода, тени, нет данных или очень темные пиксели"),
+-                1: ("Кандидатные зоны", "Места для проверки после сверки с V6"),
+-                3: ("Риск сухой соли", "Возможная сухая солевая корка по спутниковым признакам"),
+-                4: ("Риск влажной рапы", "Возможная влажная соленая поверхность или подъем рапы"),
+-                5: ("Сложный рельеф", "Склоны или резкие формы рельефа"),
+-                10: ("Есть растительность", "Там уже есть растительность; это не класс новой посадки"),
++                0: ("Water / shadow / no data", "Excluded: water, shadow, no data, or very dark pixels"),
++                1: ("Candidate zone (low salinity)", "Places to check after comparing with V6"),
++                3: ("Dry salt risk", "Possible dry salt crust, based on satellite signals"),
++                4: ("Wet brine risk", "Possible wet, salty surface or rising brine"),
++                5: ("Steep terrain", "Slopes or sharp terrain features"),
++                10: ("Existing vegetation", "Vegetation is already present; not a class for new planting"),
+@@ -702,6 +702,6 @@ with tab_analytics:
+-                        "Код": cls_val,
+-                        "Класс V5.1": class_meta[cls_val][0],
+-                        "Площадь, га (10 м)": round(area_ha, 1),
+-                        "Площадь, км²": round(area_ha / 100.0, 1),
+-                        "Доля территории, %": round(pixel_count / total_px * 100.0, 2),
+-                        "Как понимать": class_meta[cls_val][1],
++                        "Code": cls_val,
++                        "V5.1 class": class_meta[cls_val][0],
++                        "Area, ha (10 m)": round(area_ha, 1),
++                        "Area, km2": round(area_ha / 100.0, 1),
++                        "Share of area, %": round(pixel_count / total_px * 100.0, 2),
++                        "How to read it": class_meta[cls_val][1],
+@@ -716,3 +716,3 @@ with tab_analytics:
+-            f"10 самых крупных связанных V5.1-зон по сетке 100 м: {sum(top10_ha):,.0f} га "
+-            f"({top10_share:.1f}% от candidate-оценки по сетке 100 м). "
+-            "То есть результат карты в основном собран в нескольких крупных массивах, а не только в мелких пятнах."
++            f"The 10 largest connected V5.1 zones on the 100 m grid cover {sum(top10_ha):,.0f} ha "
++            f"({top10_share:.1f}% of the candidate-zone estimate on the 100 m grid). "
++            "In other words, the map result is mostly concentrated in a few large areas, not just scattered small spots."
+@@ -722,2 +722,2 @@ with tab_analytics:
+-            f"Площадь V5.1-контуров для выезда >=10 га: {operational_area_ha:,.0f} га. "
+-            "Она меньше общей оценки по сетке 100 м, потому что мелкие пятна исключены из рабочего GeoJSON."
++            f"Area of V5.1 field-visit contours >=10 ha: {operational_area_ha:,.0f} ha. "
++            "This is smaller than the overall 100 m grid estimate because small spots are excluded from the working GeoJSON file."
+@@ -730 +730 @@ with tab_analytics:
+-        st.markdown("### Главные выводы без преувеличения")
++        st.markdown("### Main conclusions, stated plainly")
+@@ -733,3 +733,3 @@ with tab_analytics:
+-                "Вопрос": "Что это за карта",
+-                "Что есть сейчас": "V6 оценивает риск засоления по лабораторно проверенной связи NDMI и соли",
+-                "Как понимать": "Она помогает выбрать места для проверки, но не доказывает, что посадка там точно приживется.",
++                "Question": "What this map shows",
++                "Current answer": "V6 screens for salinity risk using a lab-verified link between NDMI and salt",
++                "How to read it": "It helps you choose places to check. It does not prove that planting there will succeed.",
+@@ -738,3 +738,3 @@ with tab_analytics:
+-                "Вопрос": "Где начинать",
+-                "Что есть сейчас": f"{v6_low_salt_ha:,.0f} га зоны V6 с низким риском соли" if v6_low_salt_ha else "V6-статистика недоступна",
+-                "Как понимать": "Это верхний список для полевой проверки, не площадь посадки.",
++                "Question": "Where to start",
++                "Current answer": f"{v6_low_salt_ha:,.0f} ha in the V6 low-salinity-risk zone" if v6_low_salt_ha else "V6 statistics are not available",
++                "How to read it": "This is the top of the field-check list, not a planting area.",
+@@ -743,3 +743,3 @@ with tab_analytics:
+-                "Вопрос": "Участки для выезда",
+-                "Что есть сейчас": f"{v5_stats.get('clusters', 0):,} V5.1-контуров >=10 га для KML/логистики",
+-                "Как понимать": "Их нужно сверять с V6 и проверять почвой в поле.",
++                "Question": "Sites for field visits",
++                "Current answer": f"{v5_stats.get('clusters', 0):,} V5.1 contours >=10 ha for KML and logistics",
++                "How to read it": "Check these against V6 and confirm with a soil check in the field.",
+@@ -748,3 +748,3 @@ with tab_analytics:
+-                "Вопрос": "Главное ограничение",
+-                "Что есть сейчас": "V6 проверяет соль, но не приживаемость саксаула и не все местные условия",
+-                "Как понимать": "Сравнивайте участки внутри района и подтверждайте результат полевой пробой.",
++                "Question": "Main limitation",
++                "Current answer": "V6 screens for salt, but not saxaul survival rate or every local condition",
++                "How to read it": "Compare sites within the same district, and confirm results with a field soil sample.",
+@@ -756 +756 @@ with tab_analytics:
+-        st.markdown("### Доля классов V5.1 (детализация 10 м)")
++        st.markdown("### Share of V5.1 classes (10 m detail)")
+@@ -764 +764 @@ with tab_analytics:
+-            st.info("Растровые данные классификации не найдены.")
++            st.info("No raster classification data found.")
+@@ -767 +767 @@ with tab_analytics:
+-# TAB 3: ⚙️ Технические параметры моделей
++# TAB 3: ⚙️ Technical model parameters
+@@ -771 +771 @@ with tab_dev:
+-    st.subheader("Как безопасно пользоваться результатом")
++    st.subheader("How to use the result safely")
+@@ -773,2 +773,2 @@ with tab_dev:
+-        "Эта вкладка отвечает на вопрос, где границы доверия карты. Основной результат — V6-риск засоления; "
+-        "V5.1 нужен для детализации 10 м и KML-планирования."
++        "This tab explains how much to trust the map, and where its limits are. The main result is the V6 salinity risk score; "
++        "V5.1 provides 10 m detail and KML planning."
+@@ -778,3 +778,3 @@ with tab_dev:
+-            "Можно делать": "Выбирать места для полевой проверки",
+-            "Нельзя делать": "Считать зелёные зоны готовым планом посадки",
+-            "Что проверить в поле": "Соль в верхнем слое почвы, подъезд, фактическую воду/растительность, координаты",
++            "OK to do": "Choose places for a field check",
++            "Not OK to do": "Treat green zones as a finished planting plan",
++            "What to verify in the field": "Salt in the topsoil, road access, actual water/vegetation, and coordinates",
+@@ -783,3 +783,3 @@ with tab_dev:
+-            "Можно делать": "Сравнивать участки внутри одного района",
+-            "Нельзя делать": "Механически сравнивать удалённые районы без калибровки",
+-            "Что проверить в поле": "Локальный фон засоления и свежие контрольные пробы",
++            "OK to do": "Compare sites within the same district",
++            "Not OK to do": "Directly compare distant districts without calibration",
++            "What to verify in the field": "Local salinity background and fresh control samples",
+@@ -788,3 +788,3 @@ with tab_dev:
+-            "Можно делать": "Использовать KML как маршрут для обследования",
+-            "Нельзя делать": "Считать KML разрешением на посадку",
+-            "Что проверить в поле": "Границы участка и пригодность техники/логистики",
++            "OK to do": "Use the KML file as a route for a survey",
++            "Not OK to do": "Treat the KML file as approval to plant",
++            "What to verify in the field": "Site boundaries and whether equipment/logistics fit",
+@@ -795 +795 @@ with tab_dev:
+-    st.subheader("Что еще нужно улучшить")
++    st.subheader("What still needs improvement")
+@@ -799,4 +799,4 @@ with tab_dev:
+-            "Очередь": 1,
+-            "Что сделать": "Больше полевых проб внутри дна моря",
+-            "Что нужно": "70 профилей обучают модель, но внутри целевого контура дна Арала проверочных точек мало",
+-            "Зачем": "Главный ограничитель точности — свежие полевые данные внутри целевой территории, а не интерфейс.",
++            "Priority": 1,
++            "What to do": "Collect more field samples inside the seabed area",
++            "What is needed": "70 profiles train the model, but there are few check points inside the target Aral seabed contour",
++            "Why": "The main limit on accuracy is fresh field data inside the target area, not the interface.",
+@@ -805,4 +805,4 @@ with tab_dev:
+-            "Очередь": 2,
+-            "Что сделать": "Калибровать уровень засоления между районами",
+-            "Что нужно": "Опорные пробы в разных блоках для общей шкалы (при объединении удалённых районов качество заметно ниже — см. блок «Пространственная проверка»)",
+-            "Зачем": "Внутри участка модель ранжирует верно, но абсолютный уровень дрейфует между районами.",
++            "Priority": 2,
++            "What to do": "Calibrate salinity levels across districts",
++            "What is needed": "Reference samples in different blocks to build a shared scale (accuracy drops noticeably when combining distant districts; see the \"Spatial validation\" section)",
++            "Why": "Within one site, the model ranks correctly, but the absolute level drifts between districts.",
+@@ -811,4 +811,4 @@ with tab_dev:
+-            "Очередь": 3,
+-            "Что сделать": "Согласовать пробы с датой снимков",
+-            "Что нужно": "Свежий отбор под текущий NDMI (лабораторные данные — 2012–2014)",
+-            "Зачем": "Связь NDMI→соль проверяется на разнесённых во времени данных; совмещение по дате усилит её.",
++            "Priority": 3,
++            "What to do": "Match soil samples to the imagery date",
++            "What is needed": "Fresh sampling that matches current NDMI imagery (lab data is from 2012-2014)",
++            "Why": "The NDMI-to-salt link is checked against data collected at a different time; matching the dates would strengthen it.",
+@@ -817,4 +817,4 @@ with tab_dev:
+-            "Очередь": 4,
+-            "Что сделать": "Независимая проверка по кампании 2020/2021",
+-            "Что нужно": "Использовать пробы 2020/2021 как отдельный тест (не смешивать с обучением 2012–2014)",
+-            "Зачем": "Честная внешняя проверка без утечки между наборами данных.",
++            "Priority": 4,
++            "What to do": "Independent check using the 2020/2021 field campaign",
++            "What is needed": "Use 2020/2021 samples as a separate test set (do not mix them with the 2012-2014 training data)",
++            "Why": "This gives a fair, independent check with no leakage between data sets.",
+@@ -823,4 +823,4 @@ with tab_dev:
+-            "Очередь": 5,
+-            "Что сделать": "Связать балл с приживаемостью посадок",
+-            "Что нужно": "Данные о выживаемости реальных посадок саксаула по участкам",
+-            "Зачем": "Перейти от «риска засоления» к проверенному прогнозу успеха посадки.",
++            "Priority": 5,
++            "What to do": "Link the score to planting survival",
++            "What is needed": "Data on the survival of real saxaul plantings, by site",
++            "Why": "This would move the tool from \"salinity risk\" to a verified forecast of planting success.",
+@@ -829 +829 @@ with tab_dev:
+-    with st.expander("План улучшений модели и данных", expanded=False):
++    with st.expander("Model and data improvement roadmap", expanded=False):
+@@ -832 +832 @@ with tab_dev:
+-    with st.expander("Техническая справка по вспомогательному слою V5.1"):
++    with st.expander("Technical notes on the V5.1 helper layer"):
+@@ -836 +836 @@ with tab_dev:
+-            st.markdown("**Что делает V5.1:** исключает воду/тень, сложный рельеф, существующую растительность и признаки солёных поверхностей. Оставшееся — candidate-зоны для проверки, не доказательство для посадки.")
++            st.markdown("**What V5.1 does:** it excludes water/shadow, steep terrain, existing vegetation, and signs of salty surfaces. What is left forms candidate zones (low salinity) to check; this is not proof that planting will work.")
+@@ -839 +839 @@ with tab_dev:
+-                | Класс | Простое правило |
++                | Class | Simple rule |
+@@ -841,6 +841,6 @@ with tab_dev:
+-                | **0 Вода / тень / нет данных** | Пиксель похож на воду, тень или плохие данные |
+-                | **5 Сложный рельеф** | Уклон больше 5 градусов |
+-                | **10 Есть растительность** | Уже есть зеленая растительность |
+-                | **4 Риск влажной рапы** | Признаки высокой влажности и соленой поверхности одновременно |
+-                | **3 Риск сухой соли** | Признаки сухой солевой корки |
+-                | **1 Кандидатные зоны** | Все, что не попало в перечисленные выше риски |
++                | **0 Water / shadow / no data** | Pixel looks like water, shadow, or bad data |
++                | **5 Steep terrain** | Slope greater than 5 degrees |
++                | **10 Existing vegetation** | Green vegetation is already present |
++                | **4 Wet brine risk** | Signs of high moisture and a salty surface at the same time |
++                | **3 Dry salt risk** | Signs of a dry salt crust |
++                | **1 Candidate zone (low salinity)** | Everything not caught by the risks listed above |
+@@ -851 +851 @@ with tab_dev:
+-            st.markdown("**Распределение классов V5.1 (10 м):**")
++            st.markdown("**V5.1 class distribution (10 m):**")
+@@ -857,2 +857,2 @@ with tab_dev:
+-                "Класс": ["1 Кандидат", "3 Сухая соль", "4 Влажная рапа", "5 Рельеф", "10 Растительность", "0 Вода/тень"],
+-                "Пиксели": [
++                "Class": ["1 Candidate", "3 Dry salt", "4 Wet brine", "5 Terrain", "10 Vegetation", "0 Water/shadow"],
++                "Pixels": [
+@@ -876 +876 @@ with tab_dev:
+-            st.caption("V5.1 ограничен рабочими спутниковыми пикселями и не заменяет V6-балл засоления.")
++            st.caption("V5.1 is limited to usable satellite pixels, and does not replace the V6 salinity score.")
+@@ -881,2 +881,2 @@ with tab_dev:
+-        with st.expander("Пороги V5.1 для специалистов"):
+-            st.caption("Пороги посчитаны автоматически по снимку Sentinel-2. Они нужны для вспомогательной 10 м классификации V5.1.")
++        with st.expander("V5.1 thresholds, for technical users"):
++            st.caption("These thresholds are calculated automatically from the Sentinel-2 image. They are used for the V5.1 helper 10 m classification.")
+@@ -885,6 +885,6 @@ with tab_dev:
+-                ("Влажность (NDMI P15)", "NDMI_P15", "Нижняя граница NDMI для признаков сухих солончаков."),
+-                ("Влажность (NDMI P85)", "NDMI_P85", "Верхняя граница NDMI для признаков капиллярной рапы."),
+-                ("Засоление (NDSI P15)", "NDSI_Green_SWIR2_P15", "Нижняя граница солевого индекса."),
+-                ("Засоление (NDSI P85)", "NDSI_Green_SWIR2_P85", "Верхняя граница солевого индекса."),
+-                ("Рапа (B8/B12 P15)", "BR_NIR_SWIR2_P15", "Нижняя граница отношения NIR/SWIR2."),
+-                ("Рапа (B8/B12 P85)", "BR_NIR_SWIR2_P85", "Верхняя граница отношения NIR/SWIR2."),
++                ("Moisture (NDMI P15)", "NDMI_P15", "Lower NDMI bound for signs of a dry solonchak (a salt-affected soil type)."),
++                ("Moisture (NDMI P85)", "NDMI_P85", "Upper NDMI bound for signs of capillary brine."),
++                ("Salinity (NDSI P15)", "NDSI_Green_SWIR2_P15", "Lower bound of the salinity index."),
++                ("Salinity (NDSI P85)", "NDSI_Green_SWIR2_P85", "Upper bound of the salinity index."),
++                ("Brine (B8/B12 P15)", "BR_NIR_SWIR2_P15", "Lower bound of the NIR/SWIR2 ratio."),
++                ("Brine (B8/B12 P85)", "BR_NIR_SWIR2_P85", "Upper bound of the NIR/SWIR2 ratio."),
+@@ -899 +899 @@ with tab_dev:
+-    st.subheader("Отчеты проверки")
++    st.subheader("Validation reports")
+@@ -901 +901 @@ with tab_dev:
+-        "Эти отчеты показывают, как проверялась карта, где есть спорные координаты и насколько результат зависит от порогов. Это не финальная оценка точности."
++        "These reports show how the map was checked, where there are disputed coordinates, and how much the result depends on the thresholds used. This is not a final accuracy assessment."
+@@ -905 +905 @@ with tab_dev:
+-        ("Проверка по точкам", V5_VALIDATION_REPORT_PATH, "python scripts/v5_validation_report.py"),
++        ("Point-by-point check", V5_VALIDATION_REPORT_PATH, "python scripts/v5_validation_report.py"),
+@@ -907 +907 @@ with tab_dev:
+-            "Выбор правильных координат",
++            "Choosing correct coordinates",
+@@ -911 +911 @@ with tab_dev:
+-        ("Чувствительность порогов", V5_UNCERTAINTY_REPORT_PATH, "python scripts/v5_uncertainty_report.py"),
++        ("Threshold sensitivity", V5_UNCERTAINTY_REPORT_PATH, "python scripts/v5_uncertainty_report.py"),
+@@ -918 +918 @@ with tab_dev:
+-                    label=f"Скачать: {label}",
++                    label=f"Download: {label}",
+@@ -923 +923 @@ with tab_dev:
+-                with st.expander(f"Посмотреть: {label}"):
++                with st.expander(f"View: {label}"):
+@@ -926 +926 @@ with tab_dev:
+-                st.info(f"Отчет «{label}» пока не создан.")
++                st.info(f"The \"{label}\" report has not been created yet.")
+@@ -932 +932 @@ with tab_dev:
+-    st.subheader("Какие слои сейчас использовать")
++    st.subheader("Which layers to use now")
+@@ -935,3 +935,3 @@ with tab_dev:
+-            "Слой": "V6",
+-            "Для чего": "Основной ответ: где ниже риск засоления",
+-            "Как использовать": "Наводить на карту, смотреть балл 0–100 и выбирать точки для полевой проверки",
++            "Layer": "V6",
++            "What it is for": "Main answer: where salinity risk is lower",
++            "How to use it": "Hover over the map, check the 0-100 score, and choose sites for a field check",
+@@ -940,3 +940,3 @@ with tab_dev:
+-            "Слой": "V5.1",
+-            "Для чего": "Детализация 10 м и KML-контуры для выезда",
+-            "Как использовать": "Проверять границы, воду/рельеф и строить маршрут, но не заменять V6-балл",
++            "Layer": "V5.1",
++            "What it is for": "10 m detail and KML contours for field visits",
++            "How to use it": "Check boundaries, water/terrain, and build a route, but do not use it in place of the V6 score",
+@@ -946 +946 @@ with tab_dev:
+-    with st.expander("Архивные версии V1–V4"):
++    with st.expander("Archived versions V1-V4"):
+@@ -948,2 +948,2 @@ with tab_dev:
+-            "V1–V4 оставлены только как история разработки. Они не используются для текущих решений, "
+-            "не должны возвращаться в интерфейс и не заменяют V6/V5.1."
++            "V1-V4 are kept only as development history. They are not used for current decisions, "
++            "should not return to the interface, and do not replace V6/V5.1."
+@@ -957 +957 @@ with tab_dev:
+-        st.subheader("V6 — текущий слой риска засоления (70 почвенных профилей)")
++        st.subheader("V6 — current salinity-risk layer (70 soil profiles)")
+@@ -962,3 +962,3 @@ with tab_dev:
+-            "Главный слой для предварительного отбора по риску соли. Он обучен на измеренной "
+-            "солёности почвы из отчёта Пачикина–Козыбаевой (2012–2014, 70 georeferenced разрезов). "
+-            "V5.1 (10 м, скрининг по правилам) сохранён как слой детализации и логистики."
++            "This is the main layer for preliminary screening by salinity risk. It is trained on measured "
++            "soil salinity from the Pachikin-Kozybaeva report (2012-2014, 70 georeferenced soil profiles). "
++            "V5.1 (10 m, rule-based screening) is kept as a detail and logistics layer."
+@@ -968,2 +968,2 @@ with tab_dev:
+-                "Вопрос": "Что проверяет V6",
+-                "Ответ": "Риск засоления верхнего слоя почвы, а не приживаемость саксаула",
++                "Question": "What V6 checks",
++                "Answer": "Salinity risk in the topsoil, not saxaul survival rate",
+@@ -972,2 +972,2 @@ with tab_dev:
+-                "Вопрос": "Как читать балл",
+-                "Ответ": "Больше балл — ниже ожидаемый риск соли; это приоритет для выезда, не план посадки",
++                "Question": "How to read the score",
++                "Answer": "A higher score means lower expected salinity risk; it is a priority for a field visit, not a planting plan",
+@@ -976,2 +976,2 @@ with tab_dev:
+-                "Вопрос": "На каких данных основано",
+-                "Ответ": f"{v6_metrics.get('n') or 70} почвенных профилей с лабораторно измеренной солью",
++                "Question": "What data this is based on",
++                "Answer": f"{v6_metrics.get('n') or 70} soil profiles with lab-measured salt content",
+@@ -980,2 +980,2 @@ with tab_dev:
+-                "Вопрос": "Где осторожность",
+-                "Ответ": "Удалённые районы нельзя сравнивать механически без локальной калибровки",
++                "Question": "Where to be careful",
++                "Answer": "Distant districts should not be compared directly without local calibration",
+@@ -987,2 +987,2 @@ with tab_dev:
+-            "**Что это значит простыми словами:** V6 ищет участки с меньшим риском засоления. "
+-            "Более высокий балл означает ниже ожидаемый риск соли, но не гарантирует приживаемость посадки."
++            "**In plain terms:** V6 looks for sites with lower salinity risk. "
++            "A higher score means lower expected salt risk, but it does not guarantee that a planting will survive."
+@@ -990 +990 @@ with tab_dev:
+-        with st.expander("Для специалистов: метрики V6"):
++        with st.expander("For technical users: V6 metrics"):
+@@ -993 +993 @@ with tab_dev:
+-                "Профилей (обучение)",
++                "Profiles (training)",
+@@ -995 +995 @@ with tab_dev:
+-                help="Почвенные разрезы с измеренной солёностью верхнего слоя.",
++                help="Soil profiles with measured topsoil salinity.",
+@@ -997 +997 @@ with tab_dev:
+-            c2.metric("Солёных (>1%)", f"{v6_metrics.get('n_saline') or '—'}")
++            c2.metric("Saline (>1%)", f"{v6_metrics.get('n_saline') or '—'}")
+@@ -1003 +1003 @@ with tab_dev:
+-                help="Площадь под ROC по схеме leave-one-out: способность отличать солёные точки от несолёных.",
++                help="Area under the ROC curve using leave-one-out validation: how well the model tells saline points apart from non-saline ones.",
+@@ -1006,3 +1006,3 @@ with tab_dev:
+-                "95% интервал",
+-                f"{ci[0]:.3f}–{ci[1]:.3f}" if ci else "—",
+-                help="Бутстрап-интервал AUC. Не пересекает 0.5 — связь устойчива.",
++                "95% interval",
++                f"{ci[0]:.3f}-{ci[1]:.3f}" if ci else "—",
++                help="Bootstrap confidence interval for the AUC. It does not cross 0.5, so the relationship is stable.",
+@@ -1011,3 +1011,3 @@ with tab_dev:
+-                "Спутниковый индекс NDMI связан с измеренной солёностью верхнего слоя почвы "
+-                "(Spearman ρ ≈ +0.66, p < 1e-9, n=70). Балл V6 считается как "
+-                "`1 − вероятность засоления` и используется только для ранжирования кандидатов."
++                "The satellite NDMI index is linked to measured topsoil salinity "
++                "(Spearman rho ≈ +0.66, p < 1e-9, n=70). The V6 score is calculated as "
++                "`1 - probability of salinity` and is used only to rank candidates."
+@@ -1018,3 +1018,3 @@ with tab_dev:
+-                    f"**Независимая проверка (AralField 2018, саксаул):** AUC {af.get('auc')}, "
+-                    f"n={af.get('n')} ({af.get('n_present')} с саксаулом), "
+-                    f"интервал {af.get('ci95')[0] if af.get('ci95') else '—'}–"
++                    f"**Independent check (AralField 2018, saxaul):** AUC {af.get('auc')}, "
++                    f"n={af.get('n')} ({af.get('n_present')} with saxaul), "
++                    f"interval {af.get('ci95')[0] if af.get('ci95') else '—'}-"
+@@ -1022 +1022 @@ with tab_dev:
+-                    "Точек слишком мало для надёжной оценки — только как направление."
++                    "There are too few points for a reliable estimate; treat this only as a directional signal."
+@@ -1030 +1030 @@ with tab_dev:
+-            with st.expander("Пространственная проверка (честно про ограничения)", expanded=False):
++            with st.expander("Spatial validation (an honest look at the limits)", expanded=False):
+@@ -1033,15 +1033,15 @@ with tab_dev:
+-                    Чтобы проверить, не завышена ли точность из-за того, что близкие точки похожи,
+-                    мы делили данные на пространственные блоки (~{sm.get('block_km', 20):.0f} км) и
+-                    обучали модель без каждого блока по очереди.
+-
+-                    - **Средняя AUC по блокам: {pb}** — внутри каждого участка модель верно ранжирует
+-                      солёные и несолёные точки.
+-                    - Объединённая AUC по всем блокам: {pooled} — ниже, потому что **базовый уровень
+-                      засоления различается между районами** (в одном блоке солёные почти все точки,
+-                      в другом — почти ни одной). Это смещение калибровки между районами, **а не
+-                      потеря сигнала**.
+-                    - Знак связи NDMI→соль положительный в **{sign}** проверяемых блоках.
+-
+-                    Вывод: модель лучше использовать для локального ранжирования внутри района.
+-                    Сравнение удалённых районов по одному абсолютному уровню требует дополнительной
+-                    калибровки. Это ограничение показано явно, а не скрыто.
++                    To check whether accuracy looks better than it is just because nearby points are similar,
++                    we split the data into spatial blocks (~{sm.get('block_km', 20):.0f} km) and
++                    trained the model leaving out each block in turn.
++
++                    - **Average AUC per block: {pb}** — within each site, the model correctly ranks
++                      saline and non-saline points.
++                    - Pooled AUC across all blocks: {pooled} — lower, because **the baseline salinity
++                      level differs between districts** (in one block almost every point is saline,
++                      in another almost none is). This is a cross-region calibration gap, **not
++                      a loss of signal**.
++                    - The NDMI-to-salt relationship has a positive sign in **{sign}** of the tested blocks.
++
++                    Conclusion: the model is best used for local ranking within a district.
++                    Comparing distant districts on one absolute scale needs extra
++                    calibration. This limitation is stated openly here, not hidden.
+@@ -1055,2 +1055,2 @@ with tab_dev:
+-            names = {"1": "1 Кандидат (низкая соль)", "3": "3 Умеренное засоление",
+-                     "4": "4 Сильное засоление", "10": "10 Растительность", "0": "0 Вода/нет данных"}
++            names = {"1": "1 Candidate (low salinity)", "3": "3 Moderate salinity",
++                     "4": "4 High salinity", "10": "10 Vegetation", "0": "0 Water/no data"}
+@@ -1062,3 +1062,3 @@ with tab_dev:
+-                    "Зона V6": names[k],
+-                    "Площадь, га": f"{ha:,.0f}",
+-                    "% суши": f"{ha / land * 100:.1f}%" if (land and k != "0") else "—",
++                    "V6 zone": names[k],
++                    "Area, ha": f"{ha:,.0f}",
++                    "% of land": f"{ha / land * 100:.1f}%" if (land and k != "0") else "—",
+@@ -1066 +1066 @@ with tab_dev:
+-            st.markdown("**Зоны V6 на сплошном слое 30 м (та же область, что у V5.1):**")
++            st.markdown("**V6 zones on the wall-to-wall 30 m layer (same area as V5.1):**")
+@@ -1070,3 +1070,3 @@ with tab_dev:
+-                f"Покрытие: {vf*100:.0f}% области исследования получает оценку (сплошной слой 30 м), "
+-                "против ~46% у композита 10 м. Зоны 3/4 — это градация тяжести засоления по одной "
+-                "проверенной оси NDMI."
++                f"Coverage: {vf*100:.0f}% of the study area gets a score (wall-to-wall 30 m layer), "
++                "compared to about 46% for the 10 m composite. Zones 3 and 4 are a severity gradient of salinity along a single, "
++                "validated NDMI axis."
+@@ -1074 +1074 @@ with tab_dev:
+-                "Зоны 3/4 — это градация тяжести засоления по одной проверенной оси NDMI."
++                "Zones 3 and 4 are a severity gradient of salinity along a single, validated NDMI axis."
+@@ -1082,7 +1082,7 @@ with tab_dev:
+-            cc1.metric("V6 покрывает точек", f"{pv.get('v6_scored_nonwater', '—')}/70",
+-                       help="Не-водные точки наземной правды, попавшие в оцениваемые зоны.")
+-            cc2.metric("V5.1 покрывает точек", f"{pv.get('v5_covered_nonwater', '—')}/70",
+-                       help="Для сравнения: замороженный продукт 10 м покрывает меньше.")
+-            cc3.metric("Детектор засоления",
+-                       f"чувств. {det.get('sensitivity', '—')} / спец. {det.get('specificity', '—')}",
+-                       help="Зоны 3/4 как детектор солёности >1% на покрытых точках.")
++            cc1.metric("Points covered by V6", f"{pv.get('v6_scored_nonwater', '—')}/70",
++                       help="Non-water ground-truth points that fall inside scored zones.")
++            cc2.metric("Points covered by V5.1", f"{pv.get('v5_covered_nonwater', '—')}/70",
++                       help="For comparison: the frozen 10 m product covers fewer points.")
++            cc3.metric("Salinity detector",
++                       f"sensitivity {det.get('sensitivity', '—')} / specificity {det.get('specificity', '—')}",
++                       help="Zones 3/4 used as a detector for salinity >1% on the covered points.")
+@@ -1092,3 +1092,3 @@ with tab_dev:
+-                f"{n_out or 'Часть'} из {v6_metrics.get('n') or 70} обучающих разрезов лежат вне контура моря 1960 г.; "
+-                f"внутри целевого дна Арала для проверки около {n_in or pv.get('v6_scored_nonwater', '—')} точек. "
+-                f"Полная таблица: `{rel_path(V6_PIT_TABLE_PATH)}`."
++                f"{n_out or 'Some'} of the {v6_metrics.get('n') or 70} training soil profiles lie outside the 1960 sea boundary; "
++                f"about {n_in or pv.get('v6_scored_nonwater', '—')} points inside the target Aral seabed are available for checking. "
++                f"Full table: `{rel_path(V6_PIT_TABLE_PATH)}`."
+@@ -1099 +1099 @@ with tab_dev:
+-    st.subheader("Проверка слоя V5.1 по 11 полевым точкам")
++    st.subheader("V5.1 layer check against 11 field points")
+@@ -1106 +1106 @@ with tab_dev:
+-        st.warning("Файлы проверки V5.1 не найдены.")
++        st.warning("V5.1 validation files were not found.")
+@@ -1108,2 +1108,2 @@ with tab_dev:
+-            "Сначала нужно пересобрать вспомогательные отчеты V5.1. "
+-            "Технические команды скрыты ниже."
++            "The V5.1 helper reports need to be rebuilt first. "
++            "The technical commands are hidden below."
+@@ -1119 +1119 @@ with tab_dev:
+-        col_v1.metric("Статус координат", validation_summary.get("coordinate_policy", "n/a"))
++        col_v1.metric("Coordinate status", validation_summary.get("coordinate_policy", "n/a"))
+@@ -1121 +1121 @@ with tab_dev:
+-            "Расхождение координат",
++            "Coordinate discrepancy",
+@@ -1124,3 +1124,3 @@ with tab_dev:
+-        col_v3.metric("Профили с координатами", f"{validation_summary.get('n_profiles_with_coordinates', 0):,}")
+-        col_v4.metric("Только лабораторные", f"{validation_summary.get('n_lab_only_profiles', 0):,}")
+-        col_v5.metric("Подтвержденные точки", f"{validation_summary.get('n_authoritative_point_samples', 0):,}")
++        col_v3.metric("Profiles with coordinates", f"{validation_summary.get('n_profiles_with_coordinates', 0):,}")
++        col_v4.metric("Lab data only", f"{validation_summary.get('n_lab_only_profiles', 0):,}")
++        col_v5.metric("Confirmed points", f"{validation_summary.get('n_authoritative_point_samples', 0):,}")
+@@ -1129,2 +1129,2 @@ with tab_dev:
+-            "Сейчас хранятся два набора координат: исходные и сдвинутые. Они проверяются отдельно. "
+-            "Когда будут выбраны правильные координаты, они появятся отдельной группой подтвержденных точек."
++            "Two sets of coordinates are currently kept: the original set and a shifted set. They are checked separately. "
++            "Once the correct coordinates are chosen, they will appear as a separate group of confirmed points."
+@@ -1133,2 +1133,2 @@ with tab_dev:
+-            "Это проверка вспомогательного слоя V5.1, а не финальная оценка точности V6. "
+-            "Из-за конфликта координат её нужно читать как предварительную диагностику."
++            "This checks the V5.1 helper layer. It is not a final accuracy assessment of V6. "
++            "Because of the coordinate conflict, treat it as a preliminary diagnostic only."
+@@ -1137 +1137 @@ with tab_dev:
+-        st.markdown("### В какие классы попали точки")
++        st.markdown("### Which map classes the points fell into")
+@@ -1144 +1144 @@ with tab_dev:
+-        class_dist.columns = ["Источник координат", "Класс карты", "Количество"]
++        class_dist.columns = ["Coordinate source", "Map class", "Count"]
+@@ -1147 +1147 @@ with tab_dev:
+-        with st.expander("Для специалистов: корреляции, графики и чувствительность V5.1", expanded=False):
++        with st.expander("For technical users: V5.1 correlations, charts, and sensitivity", expanded=False):
+@@ -1155,2 +1155,2 @@ with tab_dev:
+-                    "Источник координат",
+-                    "Показатель",
++                    "Coordinate source",
++                    "Metric",
+@@ -1160,2 +1160,2 @@ with tab_dev:
+-                    "Интервал",
+-                    "Статус",
++                    "Interval",
++                    "Status",
+@@ -1163 +1163 @@ with tab_dev:
+-                st.markdown("### Связь карты с верхним слоем солености")
++                st.markdown("### Link between the map and topsoil salinity")
+@@ -1165,2 +1165,2 @@ with tab_dev:
+-                    "Spearman r показывает, идут ли два показателя в одну сторону. "
+-                    "При 11 точках это только подсказка, а не доказательство."
++                    "Spearman r shows whether two measures move in the same direction. "
++                    "With only 11 points, this is a hint, not proof."
+@@ -1177 +1177 @@ with tab_dev:
+-                st.markdown("### Графики по точкам")
++                st.markdown("### Charts by point")
+@@ -1187,3 +1187,3 @@ with tab_dev:
+-                        "top_salinity_pct": "Соленость верхнего слоя (%)",
+-                        "coordinate_source": "Источник координат",
+-                        "class_filtered_name": "Класс карты",
++                        "top_salinity_pct": "Topsoil salinity (%)",
++                        "coordinate_source": "Coordinate source",
++                        "class_filtered_name": "Map class",
+@@ -1191 +1191 @@ with tab_dev:
+-                    title="NDMI и соленость верхнего слоя",
++                    title="NDMI vs. topsoil salinity",
+@@ -1204,4 +1204,4 @@ with tab_dev:
+-                        "br_nir_swir2": "Отношение B8/B12",
+-                        "top_salinity_pct": "Соленость верхнего слоя (%)",
+-                        "coordinate_source": "Источник координат",
+-                        "class_filtered_name": "Класс карты",
++                        "br_nir_swir2": "B8/B12 ratio",
++                        "top_salinity_pct": "Topsoil salinity (%)",
++                        "coordinate_source": "Coordinate source",
++                        "class_filtered_name": "Map class",
+@@ -1209 +1209 @@ with tab_dev:
+-                    title="B8/B12 и соленость верхнего слоя",
++                    title="B8/B12 vs. topsoil salinity",
+@@ -1215 +1215 @@ with tab_dev:
+-                st.markdown("### Насколько результат зависит от порогов")
++                st.markdown("### How much the result depends on the thresholds")
+@@ -1223,4 +1223,4 @@ with tab_dev:
+-                            "Сценарий": scenario,
+-                            "Кандидатная площадь, га (примерно)": candidate.get("area_ha_approx"),
+-                            "Кандидатная площадь, км² (примерно)": candidate.get("area_km2_approx"),
+-                            "Доля сетки, %": candidate.get("pct_of_sample_grid"),
++                            "Scenario": scenario,
++                            "Candidate area, ha (approx.)": candidate.get("area_ha_approx"),
++                            "Candidate area, km2 (approx.)": candidate.get("area_km2_approx"),
++                            "Share of grid, %": candidate.get("pct_of_sample_grid"),
+@@ -1239,4 +1239,4 @@ with tab_dev:
+-                                "Источник координат": source,
+-                                "Стабильных точек": stable,
+-                                "Всего точек": int(len(group)),
+-                                "Доля стабильных, %": round(stable / len(group) * 100, 1) if len(group) else 0,
++                                "Coordinate source": source,
++                                "Stable points": stable,
++                                "Total points": int(len(group)),
++                                "Share stable, %": round(stable / len(group) * 100, 1) if len(group) else 0,
+@@ -1248 +1248 @@ with tab_dev:
+-        st.markdown("### Таблица проверки по точкам")
++        st.markdown("### Point-by-point validation table")
+@@ -1256,7 +1256,7 @@ with tab_dev:
+-            "coordinate_source": "Источник координат",
+-            "S_Point": "Точка",
+-            "pit_code": "Разрез",
+-            "top_salinity_pct": "Соленость сверху, %",
+-            "field_salinity_0_20": "Полев. соленость 0-20",
+-            "field_ec_0_20": "Полев. EC 0-20",
+-            "class_filtered_name": "Класс карты",
++            "coordinate_source": "Coordinate source",
++            "S_Point": "Sample point",
++            "pit_code": "Pit ID",
++            "top_salinity_pct": "Topsoil salinity, %",
++            "field_salinity_0_20": "Field salinity 0-20",
++            "field_ec_0_20": "Field EC 0-20",
++            "class_filtered_name": "Map class",
+@@ -1266 +1266 @@ with tab_dev:
+-            "coordinate_conflict_m": "Конфликт координат, м",
++            "coordinate_conflict_m": "Coordinate conflict, m",
+@@ -1272 +1272 @@ with tab_dev:
+-            "Эта проверка предварительная. Главное ограничение сейчас - нужно выбрать правильные координаты для 11 точек."
++            "This check is preliminary. The main limitation right now is choosing the correct coordinates for the 11 points."
+diff --git a/scripts/v6/render_v6_map.py b/scripts/v6/render_v6_map.py
+index 14a404a..6a69126 100644
+--- a/scripts/v6/render_v6_map.py
++++ b/scripts/v6/render_v6_map.py
+@@ -7 +7 @@ Produces outputs/reports/suitability_map_v6.html with two togglable overlays
+-  1. "Зоны риска соли V6" — suitability_zones_v6.tif in the SAME palette/legend
++  1. "V6 salinity risk zones" — suitability_zones_v6.tif in the SAME palette/legend
+@@ -10 +10 @@ Produces outputs/reports/suitability_map_v6.html with two togglable overlays
+-  2. "Балл V6: ниже риск соли (0..1)" — suitability_index_v6.tif as a green→red
++  2. "V6 score: higher = lower salinity risk (0..1)" — suitability_index_v6.tif as a green→red
+@@ -34,0 +35 @@ try:
++    from shapely.geometry import Polygon, mapping, shape
+@@ -36 +37 @@ except ImportError as e:  # pragma: no cover
+-    raise SystemExit(f"render_v6_map needs rasterio + folium + Pillow: {e}")
++    raise SystemExit(f"render_v6_map needs rasterio + folium + Pillow + shapely: {e}")
+@@ -40,0 +42 @@ ODATA = BASE / "outputs" / "data"
++AOI_DIR = BASE / "outputs" / "aoi"
+@@ -44,0 +47 @@ INDEX = ODATA / "suitability_index_v6.tif"
++AOI_BOUNDARY = AOI_DIR / "aral_sea_1960.geojson"
+@@ -63,6 +66,6 @@ PALETTE = {
+-DISPLAY_NAMES_RU = {
+-    1: "Кандидат (низкое засоление)",
+-    3: "Умеренное засоление",
+-    4: "Сильное засоление",
+-    10: "Есть растительность",
+-    0: "Вода / нет данных",
++DISPLAY_NAMES_EN = {
++    1: "Candidate zone (low salinity)",
++    3: "Moderate salinity",
++    4: "Strong salinity",
++    10: "Existing vegetation",
++    0: "Water / no data",
+@@ -147,0 +151,25 @@ def project_rgba_for_leaflet(img: np.ndarray, bounds: list[list[float]]) -> np.n
++def load_aoi_boundary_geojson(hole_area_min_deg2: float = 0.001, simplify_tol_deg: float = 0.0015) -> dict | None:
++    """Load the 1960 AOI polygon and lighten it for map display.
++
++    The raw file (~20,800 rings from raster->vector conversion) is far too
++    heavy to embed directly. Small holes (<0.001 deg^2, mostly vectorization
++    noise) are dropped and the remainder is simplified; this keeps the visible
++    coastline shape and the ~25 holes large enough to matter at map scale
++    while cutting point count roughly 10x.
++    """
++    if not AOI_BOUNDARY.exists():
++        return None
++    data = json.loads(AOI_BOUNDARY.read_text(encoding="utf-8"))
++    feats = data.get("features", [])
++    if not feats:
++        return None
++    geom = shape(feats[0]["geometry"])
++    kept_holes = [h for h in geom.interiors if Polygon(h).area > hole_area_min_deg2]
++    light = Polygon(geom.exterior, kept_holes).simplify(simplify_tol_deg, preserve_topology=True)
++    return {
++        "type": "Feature",
++        "properties": {"name": "AOI boundary (1960 shoreline)"},
++        "geometry": mapping(light),
++    }
++
++
+@@ -175,2 +203,2 @@ def metric_note(metrics: dict) -> str:
+-    n_txt = f"{n} лаб. профилям" if n else "лабораторным профилям"
+-    return f"30 м · модель солёности по {n_txt} ({auc_txt})"
++    n_txt = f"{n} lab soil profiles" if n else "lab soil profiles"
++    return f"30 m · salinity model from {n_txt} ({auc_txt})"
+@@ -212 +240 @@ def decision_help_html(metrics: dict) -> str:
+-    <div style="font-weight:700; font-size:14px; margin-bottom:4px;">Что показывает выбранное место</div>
++    <div style="font-weight:700; font-size:14px; margin-bottom:4px;">What the selected spot shows</div>
+@@ -214 +242 @@ def decision_help_html(metrics: dict) -> str:
+-        Наведите курсор на цветной участок карты или нажмите на него.
++        Hover over a colored area on the map, or click it.
+@@ -217 +245 @@ def decision_help_html(metrics: dict) -> str:
+-        Карта переведёт цвет в понятный вывод: риск соли, балл 0–100 и следующий шаг для выезда.
++        The map will translate the color into a plain result: salinity risk, a 0-100 score, and the next step for a field visit.
+@@ -220 +248 @@ def decision_help_html(metrics: dict) -> str:
+-        {metric_note(metrics)}. Это предварительный отбор, не разрешение на посадку.
++        {metric_note(metrics)}. This is preliminary screening, not permission to plant.
+@@ -240,3 +268,3 @@ def interaction_script(map_name: str, bounds: list[list[float]], lookup_uri: str
+-      title: 'Можно рассматривать для выезда',
+-      label: 'Кандидатная зона: низкая солёность',
+-      advice: 'Сначала проверьте доступ к дороге и сделайте полевую пробу почвы. Если проба подтвердит низкую соль, участок можно ставить выше в план работ.',
++      title: 'Worth considering for a field visit',
++      label: 'Candidate zone: low salinity',
++      advice: 'First check road access and take a field soil sample. If the sample confirms low salt, rank this site higher in the work plan.',
+@@ -246,3 +274,3 @@ def interaction_script(map_name: str, bounds: list[list[float]], lookup_uri: str
+-      title: 'Нужна осторожность',
+-      label: 'Средний риск соли',
+-      advice: 'Не планируйте посадку без полевой пробы. Подходит как запасной вариант или для точечной проверки.',
++      title: 'Needs caution',
++      label: 'Moderate salinity risk',
++      advice: 'Do not plan planting without a field soil sample. Suitable only as a backup option or for a spot check.',
+@@ -252,3 +280,3 @@ def interaction_script(map_name: str, bounds: list[list[float]], lookup_uri: str
+-      title: 'Высокий риск засоления',
+-      label: 'Сильное засоление',
+-      advice: 'Для посадки саксаула это плохой кандидат без мелиорации или специальных причин. В обычном плане выезда лучше пропустить.',
++      title: 'High salinity risk',
++      label: 'Strong salinity',
++      advice: 'A poor candidate for saxaul planting without soil remediation or a special reason. Best skipped in a normal field-visit plan.',
+@@ -258,3 +286,3 @@ def interaction_script(map_name: str, bounds: list[list[float]], lookup_uri: str
+-      title: 'Уже есть растительность',
+-      label: 'Не зона новой посадки',
+-      advice: 'Здесь уже видна растительность. Используйте как контроль или для обследования текущего состояния, а не как основной участок новой посадки.',
++      title: 'Already has vegetation',
++      label: 'Not a new-planting zone',
++      advice: 'Vegetation is already visible here. Use this as a control or to survey current conditions, not as a primary new-planting site.',
+@@ -266,3 +294,3 @@ def interaction_script(map_name: str, bounds: list[list[float]], lookup_uri: str
+-    if (score >= 0.66) return 'высокий балл низкого риска соли';
+-    if (score >= 0.33) return 'средний балл низкого риска соли';
+-    return 'низкий балл низкого риска соли';
++    if (score >= 0.66) return 'high score';
++    if (score >= 0.33) return 'medium score';
++    return 'low score';
+@@ -272,2 +300,2 @@ def interaction_script(map_name: str, bounds: list[list[float]], lookup_uri: str
+-    panelMain.innerHTML = 'В этой точке нет оценки';
+-    panelDetail.innerHTML = 'Наведите на цветной участок внутри слоя V6. Прозрачные места не используются для решения.';
++    panelMain.innerHTML = 'No score at this point';
++    panelDetail.innerHTML = 'Hover over a colored area inside the V6 layer. Transparent areas are not used for decisions.';
+@@ -302,5 +330,5 @@ def interaction_script(map_name: str, bounds: list[list[float]], lookup_uri: str
+-      '<div style="margin-top:6px;"><b>Балл низкого риска соли:</b> ' + pct + ' из 100 (' + scoreText + ')</div>' +
+-      '<div><b>Примерный риск соли (&gt;1%):</b> ' + saline + ' из 100 по модели V6</div>' +
+-      '<div><b>Класс зоны:</b> ' + info.label + '</div>';
+-    panelDetail.innerHTML = '<b>Что делать:</b> ' + info.advice +
+-      '<div style="margin-top:5px;color:#64748B;">Координаты: ' + latlng.lat.toFixed(5) + ', ' + latlng.lng.toFixed(5) + '</div>';
++      '<div style="margin-top:6px;"><b>Low-salinity-risk score:</b> ' + pct + ' out of 100 (' + scoreText + ')</div>' +
++      '<div><b>Estimated salinity risk (&gt;1%):</b> ' + saline + ' out of 100, per the V6 model</div>' +
++      '<div><b>Zone class:</b> ' + info.label + '</div>';
++    panelDetail.innerHTML = '<b>What to do:</b> ' + info.advice +
++      '<div style="margin-top:5px;color:#64748B;">Coordinates: ' + latlng.lat.toFixed(5) + ', ' + latlng.lng.toFixed(5) + '</div>';
+@@ -365 +393 @@ def main() -> None:
+-        name="Зоны риска соли V6", show=True, pixelated=True,
++        name="V6 salinity risk zones", show=True, pixelated=True,
+@@ -371 +399,16 @@ def main() -> None:
+-            name="Балл V6: ниже риск соли (0..1)", show=False, pixelated=True,
++            name="V6 score: higher = lower salinity risk (0..1)", show=False, pixelated=True,
++        ).add_to(m)
++
++    aoi_feature = load_aoi_boundary_geojson()
++    if aoi_feature is not None:
++        folium.GeoJson(
++            aoi_feature,
++            name="AOI boundary (1960 shoreline)",
++            style_function=lambda f: {
++                "color": "#38BDF8",
++                "weight": 1.5,
++                "fill": False,
++                "opacity": 0.85,
++                "dashArray": "4 3",
++            },
++            show=True,
+@@ -381 +424 @@ def main() -> None:
+-    <b style="font-size:14px;">Как читать карту</b><br>
++    <b style="font-size:14px;">How to read this map</b><br>
+@@ -388 +431 @@ def main() -> None:
+-                   f'{DISPLAY_NAMES_RU[cls]}<br>')
++                   f'{DISPLAY_NAMES_EN[cls]}<br>')
+@@ -391 +434 @@ def main() -> None:
+-    <b style="font-size:12px;">Наведите на карту</b>
++    <b style="font-size:12px;">Hover over the map</b>
+@@ -393 +436 @@ def main() -> None:
+-        Справа появится вывод по выбранной точке: балл 0–100, риск соли и следующий шаг.
++        A result for the selected point will appear on the right: a 0-100 score, salinity risk, and the next step.
+@@ -399 +442 @@ def main() -> None:
+-        <span>0.0 высокий риск соли</span><span>1.0 низкий риск</span>
++        <span>0.0 high salinity risk</span><span>1.0 low risk</span>
+@@ -403 +446 @@ def main() -> None:
+-    Зоны 3/4 — сила засоления по NDMI. Решение всегда подтверждается полевой пробой.</span>
++    Zones 3/4 show salinity severity from NDMI. Always confirm with a field soil sample before any decision.</span>

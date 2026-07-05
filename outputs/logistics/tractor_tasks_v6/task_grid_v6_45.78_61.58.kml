@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document id="root_doc">
+<Schema name="task_grid_v6_45.78_61.58" id="task_grid_v6_45.78_61.58">
+	<SimpleField name="area_ha" type="float"></SimpleField>
+	<SimpleField name="low_risk_ha" type="float"></SimpleField>
+	<SimpleField name="moderate_risk_ha" type="float"></SimpleField>
+	<SimpleField name="grid_cell_deg" type="string"></SimpleField>
+</Schema>
+<Folder><name>task_grid_v6_45.78_61.58</name>
+  <Placemark id="task_grid_v6_45.78_61.58.1">
+	<name>task_grid_v6_45.78_61.58</name>
+	<name>53.4</name>
+	<description>66</description>
+	<Style><LineStyle><color>ff0000ff</color></LineStyle><PolyStyle><fill>0</fill></PolyStyle></Style>
+	<ExtendedData><SchemaData schemaUrl="#task_grid_v6_45.78_61.58">
+		<SimpleData name="area_ha">12.5</SimpleData>
+		<SimpleData name="low_risk_ha">0.1</SimpleData>
+	</SchemaData></ExtendedData>
+      <MultiGeometry><Polygon><outerBoundaryIs><LinearRing><coordinates>61.6052806522019,45.7343547580755 61.6056537011611,45.734578587451 61.6058775305366,45.7343547580755 61.6052806522019,45.7343547580755</coordinates></LinearRing></outerBoundaryIs></Polygon><Polygon><outerBoundaryIs><LinearRing><coordinates>61.5328901631474,45.7399684791557 61.5288477443689,45.7440108979343 61.530195217295,45.7453583708605 61.5369325819259,45.7440108979343 61.5328901631474,45.7399684791557</coordinates></LinearRing></outerBoundaryIs></Polygon><Polygon><outerBoundaryIs><LinearRing><coordinates>61.5436699465568,45.7561381542699 61.5423224736307,45.7601805730484 61.5463648924092,45.764222991827 61.5531022570401,45.7628755189008 61.5436699465568,45.7561381542699</coordinates></LinearRing></outerBoundaryIs></Polygon><Polygon><outerBoundaryIs><LinearRing><coordinates>61.559839621671,45.8046471796123 61.5557972028924,45.8086895983909 61.5571446758186,45.8100370713171 61.5611870945972,45.8086895983909 61.559839621671,45.8046471796123</coordinates></LinearRing></outerBoundaryIs></Polygon></MultiGeometry>
+  </Placemark>
+</Folder>
+</Document></kml>
