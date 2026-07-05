@@ -113,8 +113,8 @@ dry seabed is interpreted as capillary saline moisture/brine, not favorable wate
 | LOO AUC | 0.682 | useful signal, not final operational accuracy |
 | 95% CI | [0.556, 0.802] | interval is above chance but still wide |
 | In-sample AUC | 0.767 | not used as the main claim |
-| In-AOI pits | 15 | small target-area validation subset |
-| Out-of-AOI pits | 55 | training support from wider Priaralye, not independent seabed validation |
+| In-AOI pits | 23 | small target-area validation subset (only 4 non-saline) |
+| Out-of-AOI pits | 47 | training support from wider Priaralye, not independent seabed validation |
 | Pooled spatial AUC | 0.385 | poor cross-region absolute calibration |
 | Mean per-block spatial AUC | 0.792 | good local ranking signal |
 | NDMI->salt sign in blocks | 5/5 positive | salinity signal is directionally stable |
@@ -298,8 +298,20 @@ link predictions to real saxaul survival outcomes.
 
 - V6 labels are 2012-2014 soil measurements; recent imagery assumes the
   NDMI-salinity relation is quasi-stationary.
-- Only about 15 of 70 training profiles are inside the 1960 seabed AOI.
+- About 23 of 70 training profiles fall inside the 1960 seabed AOI (by the
+  raster mask); only 4 of those are non-saline, which is the main reason in-seabed
+  skill cannot yet be resolved precisely.
 - Cross-region absolute scores drift; local ranking is more defensible.
+- Multi-predictor models were tested and deliberately rejected — a deliberate
+  choice, not an oversight. Adding a second wall-to-wall index (NDWI or MSAVI)
+  raises naive LOO AUC from 0.68 to ~0.79, but per-block spatial AUC drops from
+  0.79 to 0.70 and the gain does not survive on the seabed: it is a between-region
+  base-rate proxy (seabed vs. wider Priaralye) that the AOI mask already encodes.
+  A geographic region dummy makes this explicit — inside the seabed it is constant,
+  so its in-AOI AUC collapses to 0.24 (below the single-NDMI 0.63) while pooled AUC
+  balloons. The benchmark's per-block + in-AOI gates reject all such candidates and
+  keep the single NDMI predictor as the only skill defensible on the mapped seabed
+  at n=70. See `data/canonical/model_v6_benchmark_report.md`.
 - The mapped AOI (elevation <= 54 m gate, largest connected component) covers
   ~66,000 km2 measured with latitude-correct pixel area — consistent with the real
   ~68,000 km2 1960 seabed. An earlier stat printed ~95,850 km2 by assuming a flat

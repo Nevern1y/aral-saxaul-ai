@@ -40,9 +40,20 @@ def _fmt(x) -> str:
     return "n/a" if x is None else (f"{x:.3f}" if isinstance(x, float) else str(x))
 
 
+def _g(by_id: dict, model_id: str, *keys):
+    """Safe nested lookup into a benchmark model entry; returns None if absent."""
+    node = by_id.get(model_id)
+    for k in keys:
+        if not isinstance(node, dict):
+            return None
+        node = node.get(k)
+    return node
+
+
 def build_scope() -> tuple[str, dict]:
     bench = json.loads(BENCH_JSON.read_text(encoding="utf-8"))
-    m0 = next(m for m in bench["models"] if m["id"] == "M0")
+    by_id = {m["id"]: m for m in bench["models"]}
+    m0 = by_id["M0"]
     rec = bench["recommendation"]
     aoi = bench["aoi_split"]
 
@@ -100,6 +111,31 @@ def build_scope() -> tuple[str, dict]:
         f"- Baseline in-AOI LOO AUC: **{_fmt(in_aoi_auc)}**; out-of-AOI LOO AUC: **{_fmt(out_aoi_auc)}**.",
         f"- The {n_out} out-of-AOI pits are TRAINING data for the mapped seabed target and must NOT be "
         "counted as independent validation. In-AOI skill is the honest test metric (small n — directional).",
+        "",
+        "## Multi-predictor candidates tested & rejected (answers 'one predictor is too simple')",
+        "",
+        "A recurring reviewer concern is that a single-predictor (NDMI) model looks too simple. "
+        "The benchmark tests this directly and rejects the multi-predictor alternatives on the "
+        "metric that matters for the product — skill on the mapped seabed, not pooled cross-region AUC.",
+        "",
+        "- **Wall-to-wall RS-index pairs (the only ones that could ship as a map):** "
+        f"M4 (NDMI+NDWI) LOO AUC {_fmt(_g(by_id,'M4','loo_auc'))}, "
+        f"M5 (NDMI+MSAVI) LOO AUC {_fmt(_g(by_id,'M5','loo_auc'))} — both beat M0's {_fmt(loo)} on naive LOO, "
+        f"but per-block spatial AUC drops to {_fmt(_g(by_id,'M4','mean_per_block_spatial_auc'))}/"
+        f"{_fmt(_g(by_id,'M5','mean_per_block_spatial_auc'))} (vs M0 {_fmt(perblk)}). "
+        "The lift is a between-region base-rate proxy (seabed vs. wider Priaralye) that the AOI "
+        "mask already encodes; on the seabed it is not resolvable (only 4 non-saline in-AOI pits).",
+        f"- **Region dummy (M3)** makes the base-rate mechanism explicit: inside the seabed the "
+        f"in-AOI flag is constant, so its in-AOI AUC collapses to "
+        f"{_fmt(_g(by_id,'M3','aoi_stratified_auc','in_aoi'))} (below M0's {_fmt(in_aoi_auc)}) while pooled "
+        f"AUC balloons to {_fmt(_g(by_id,'M3','pooled_spatial_auc'))}.",
+        "- **Soil-lab predictors (M1/M2, sand/clay/Cl⁻)** raise LOO further but are POINT-ONLY — "
+        "no wall-to-wall 30 m raster exists, so a two-predictor map cannot be built from them.",
+        f"- **Decision:** the recommendation engine rejects all of M1–M5 by the per-block + in-AOI "
+        f"gates and keeps **{rec['recommended_model_id']}** (cascade_needed={str(rec['cascade_needed']).lower()}). "
+        "The single NDMI predictor is the only skill defensible on the mapped seabed at n=70. A "
+        "genuine second predictor requires more non-saline in-seabed ground truth (a field campaign), "
+        "not another index from the same imagery. See `model_v6_benchmark_report.md`.",
         "",
         "## W10 — Temporal drift / calibration vintage",
         "",
