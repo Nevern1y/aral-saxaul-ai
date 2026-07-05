@@ -32,7 +32,7 @@ try:
     import rasterio
     from PIL import Image
     from rasterio.enums import Resampling
-    from shapely.geometry import Polygon, mapping, shape
+    from shapely.geometry import Polygon, box, mapping, shape
 except ImportError as e:  # pragma: no cover
     raise SystemExit(f"render_v6_map needs rasterio + folium + Pillow + shapely: {e}")
 
@@ -45,6 +45,7 @@ REPORTS = BASE / "outputs" / "reports"
 ZONES = ODATA / "suitability_zones_v6.tif"
 INDEX = ODATA / "suitability_index_v6.tif"
 AOI_BOUNDARY = AOI_DIR / "aral_sea_1960.geojson"
+KZ_BOUNDARY = BASE / "outputs" / "logistics" / "kazakhstan_boundary.geojson"
 HTML_PATH = REPORTS / "suitability_map_v6.html"
 PNG_ZONES = REPORTS / "suitability_map_v6_zones.png"
 PNG_INDEX = REPORTS / "suitability_map_v6_score.png"
@@ -83,6 +84,30 @@ def downsampled(src, band, resampling, masked=False):
     b = src.bounds
     bounds = [[b.bottom, b.left], [b.top, b.right]]
     return arr, bounds, out_w, out_h
+
+
+def majority_smooth(arr, size=3):
+    """Categorical majority (mode) filter for DISPLAY only.
+
+    The zoned raster flips class pixel-by-pixel wherever NDMI sits near a threshold,
+    so the map fill looks like salt-and-pepper 'chopped' noise along the shore. A
+    per-class neighbourhood vote reassigns each pixel to the locally dominant class,
+    which reads as clean patches at map scale. This runs ONLY on the downsampled
+    display array — the analytical suitability_zones_v6.tif stays pixel-exact, so
+    the vector/logistics/pit-validation products are unaffected. NoData (0) also
+    votes, so it correctly reclaims stray specks at the coastline edge.
+    """
+    from scipy import ndimage
+
+    classes = list(PALETTE.keys())  # 0,1,3,4,10
+    best = np.zeros_like(arr)
+    best_count = np.full(arr.shape, -1.0)
+    for c in classes:
+        count = ndimage.uniform_filter((arr == c).astype(np.float32), size=size)
+        upd = count > best_count
+        best[upd] = c
+        best_count[upd] = count[upd]
+    return best
 
 
 def zones_rgba(arr):
@@ -148,14 +173,16 @@ def project_rgba_for_leaflet(img: np.ndarray, bounds: list[list[float]]) -> np.n
     return img[::-1][row_idx][::-1]
 
 
-def load_aoi_boundary_geojson(hole_area_min_deg2: float = 0.001, simplify_tol_deg: float = 0.0015) -> dict | None:
+def load_aoi_boundary_geojson(hole_area_min_deg2: float = 0.002, simplify_tol_deg: float = 0.004) -> dict | None:
     """Load the 1960 AOI polygon and lighten it for map display.
 
-    The raw file (~20,800 rings from raster->vector conversion) is far too
-    heavy to embed directly. Small holes (<0.001 deg^2, mostly vectorization
-    noise) are dropped and the remainder is simplified; this keeps the visible
-    coastline shape and the ~25 holes large enough to matter at map scale
-    while cutting point count roughly 10x.
+    The raster-derived contour is extremely ragged (~110k vertices, thousands of
+    tiny rings), which draws as a shimmering "chopped" coastline. We drop small
+    interior holes (< hole_area_min_deg2, i.e. vectorization/NDMI-dropout noise) and
+    simplify the remainder hard (simplify_tol_deg ~0.004 deg ≈ 400 m). Combined with
+    the upstream mask cleanup in build_aoi_mask.py this yields a thin, smooth outline
+    (~2,000 vertices, ~10 real holes) instead of tens of thousands of jagged points.
+    Tune down only if the coastline shape starts to look boxy at max zoom.
     """
     if not AOI_BOUNDARY.exists():
         return None
@@ -170,6 +197,37 @@ def load_aoi_boundary_geojson(hole_area_min_deg2: float = 0.001, simplify_tol_de
         "type": "Feature",
         "properties": {"name": "AOI boundary (1960 shoreline)"},
         "geometry": mapping(light),
+    }
+
+
+def load_kazakhstan_boundary_geojson(simplify_tol_deg: float = 0.01,
+                                     clip_bounds: tuple | None = None) -> dict | None:
+    """Load the Kazakhstan ADM0 boundary (geoBoundaries) for an optional overlay.
+
+    The saxaul-restoration programme is a Kazakhstan effort, so field users can
+    toggle a "Kazakhstan border" line to see which part of the mapped seabed lies
+    on the Kazakh side (the southern Large-Aral seabed is on the Uzbek side). This
+    is a reference line only — it never alters the salinity layer. The polygon is
+    simplified and optionally cropped to the map's bounds so the embedded HTML stays
+    light (the raw KAZ border spans to 87 E).
+    """
+    if not KZ_BOUNDARY.exists():
+        return None
+    data = json.loads(KZ_BOUNDARY.read_text(encoding="utf-8"))
+    feats = data.get("features", [])
+    if not feats:
+        return None
+    geom = shape(feats[0]["geometry"])
+    if clip_bounds is not None:
+        west, south, east, north = clip_bounds
+        geom = geom.intersection(box(west, south, east, north))
+    if geom.is_empty:
+        return None
+    geom = geom.simplify(simplify_tol_deg, preserve_topology=True)
+    return {
+        "type": "Feature",
+        "properties": {"name": "Kazakhstan border"},
+        "geometry": mapping(geom),
     }
 
 
@@ -377,6 +435,11 @@ def main() -> None:
     print("rendering V6 zones overlay ...", flush=True)
     with rasterio.open(ZONES) as src:
         zarr, bounds, w, h = downsampled(src, 1, Resampling.mode, masked=True)
+    # Display-only de-speckle: reassign each display pixel to its local majority class
+    # so the shoreline reads as clean patches, not chopped salt-and-pepper. Applied once
+    # here so the zone fill, the hover lookup, and the score valid-mask stay consistent
+    # (what you see == what you hover). The analytical raster on disk is untouched.
+    zarr = majority_smooth(zarr, size=3)
     zrgba = project_rgba_for_leaflet(zones_rgba(zarr), bounds)
     Image.fromarray(zrgba, "RGBA").save(PNG_ZONES)
 
@@ -428,6 +491,25 @@ def main() -> None:
             show=True,
         ).add_to(m)
 
+    # Optional Kazakhstan-border reference line. The restoration programme is a
+    # Kazakhstan effort; toggling this shows which mapped seabed is on the Kazakh
+    # side (the southern Large-Aral seabed is Uzbek). Reference only — off by default,
+    # never alters the salinity layer. Clipped to the map extent to keep the HTML light.
+    kz_feature = load_kazakhstan_boundary_geojson(clip_bounds=(west, south, east, north))
+    if kz_feature is not None:
+        folium.GeoJson(
+            kz_feature,
+            name="Kazakhstan border (restoration programme area)",
+            style_function=lambda f: {
+                "color": "#F59E0B",
+                "weight": 2.0,
+                "fill": False,
+                "opacity": 0.9,
+                "dashArray": "6 4",
+            },
+            show=False,
+        ).add_to(m)
+
     # Collapsed and top-left (under the zoom buttons): the expanded control used to
     # sit top-right, underneath the fixed decision panel, so the two overlapped.
     folium.LayerControl(collapsed=True, position="topleft").add_to(m)
@@ -449,6 +531,13 @@ def main() -> None:
                 border:1px solid #ddd;"></div>
     <div style="display:flex; justify-content:space-between; font-size:10px; color:#64748B;">
         <span>0 high salt risk</span><span>1 low risk</span>
+    </div>
+    <div style="margin-top:7px; padding-top:5px; border-top:1px solid #E2E8F0;
+                font-size:9.5px; color:#94A3B8; line-height:1.35;">
+        The zoned map is a conservative (high-sensitivity) salt screen: it flags
+        moderate/strong salinity earlier than the continuous score, so a spot can be
+        zoned &ldquo;risk&rdquo; while the 0&ndash;1 score is mid-range. Candidate = the
+        strictest low-salt class.
     </div>
 </div>
 """

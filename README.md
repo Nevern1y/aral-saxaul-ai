@@ -76,7 +76,8 @@ not on visual map classes.
 |---|---|
 | Training source | Pachikin/Kozybaeva soil report, 2012-2014 |
 | Georeferenced soil profiles | 70 |
-| Soil layers | 369 |
+| Soil layers | 365 |
+| Per-pit soil type (QA/exclusion only) | 76/76 (43 solonchak, 9 anthropogenic) |
 | Target | topsoil total salts > 1% |
 | Positive saline profiles | 27 / 70 |
 | Predictor used in shipped model | `rs30_ndmi` |
@@ -299,6 +300,14 @@ link predictions to real saxaul survival outcomes.
   NDMI-salinity relation is quasi-stationary.
 - Only about 15 of 70 training profiles are inside the 1960 seabed AOI.
 - Cross-region absolute scores drift; local ranking is more defensible.
+- The mapped AOI (elevation <= 54 m gate, largest connected component) covers
+  ~66,000 km2 measured with latitude-correct pixel area — consistent with the real
+  ~68,000 km2 1960 seabed. An earlier stat printed ~95,850 km2 by assuming a flat
+  900 m2/pixel; that was an area-arithmetic artifact, not real over-capture.
+- The AOI is a display/scoring mask only; it never enters the salinity-model
+  coefficients. Irrigated Syrdarya-delta cropland on the NE edge is dropped from the
+  map (vegetation -> NoData inside the delta box); the southern Large-Aral seabed is
+  on the Uzbek side and can be hidden with the optional Kazakhstan-border layer.
 - The 30 m stack has no Sentinel-2 SCL water mask.
 - The 30 m slope band is finite for only about 33% of the AOI (flat seabed terrain, not a missing-data gap); this is too sparse for a slope gate.
 - V5.1 10 m validation has only 14 valid production pixels at the V6 soil points (10 m NDMI vs. measured salinity correlation is not significant, rho approx 0.42, p approx 0.13); recalibration is deferred until a future campaign yields n>=30 valid 10 m points (trigger defined in scripts/v6/calibrate_thresholds.py).

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document id="root_doc">
+<Schema name="task_grid_v6_45.41_58.86" id="task_grid_v6_45.41_58.86">
+	<SimpleField name="area_ha" type="float"></SimpleField>
+	<SimpleField name="low_risk_ha" type="float"></SimpleField>
+	<SimpleField name="moderate_risk_ha" type="float"></SimpleField>
+	<SimpleField name="grid_cell_deg" type="string"></SimpleField>
+</Schema>
+<Folder><name>task_grid_v6_45.41_58.86</name>
+  <Placemark id="task_grid_v6_45.41_58.86.1">
+	<name>task_grid_v6_45.41_58.86</name>
+	<name>0</name>
+	<description>220.3</description>
+	<Style><LineStyle><color>ff0000ff</color></LineStyle><PolyStyle><fill>0</fill></PolyStyle></Style>
+	<ExtendedData><SchemaData schemaUrl="#task_grid_v6_45.41_58.86">
+		<SimpleData name="area_ha">220.3</SimpleData>
+		<SimpleData name="low_risk_ha">0.1</SimpleData>
+	</SchemaData></ExtendedData>
+      <MultiGeometry><Polygon><outerBoundaryIs><LinearRing><coordinates>58.9102213862645,45.4208169460179 58.9005716802465,45.4258868009173 58.9012755383193,45.4287022332083 58.9053179570978,45.4300497061345 58.9102213862645,45.4231849053011 58.9102213862645,45.4208169460179</coordinates></LinearRing></outerBoundaryIs></Polygon><Polygon><outerBoundaryIs><LinearRing><coordinates>58.9026230112454,45.4381345436916 58.9012755383193,45.4421769624701 58.9053179570978,45.4435244353963 58.906665430024,45.4421769624701 58.9026230112454,45.4381345436916</coordinates></LinearRing></outerBoundaryIs></Polygon><Polygon><outerBoundaryIs><LinearRing><coordinates>58.8648937693124,45.4462193812487 58.8608513505339,45.4475668541748 58.8621988234601,45.4516092729534 58.8662412422386,45.4502618000272 58.8648937693124,45.4462193812487</coordinates></LinearRing></outerBoundaryIs></Polygon><Polygon><outerBoundaryIs><LinearRing><coordinates>58.8945381736884,45.448914327101 58.8931907007622,45.4529567458796 58.8972331195407,45.4569991646581 58.8999280653931,45.4543042188057 58.9012755383193,45.4556516917319 58.8958856466145,45.4610415834366 58.8969006877486,45.4625641451378 58.9102213862645,45.4625641451378 58.9102213862645,45.4444973604723 58.9080129029502,45.448914327101 58.8972331195407,45.4516092729534 58.8945381736884,45.448914327101</coordinates></LinearRing></outerBoundaryIs><innerBoundaryIs><LinearRing><coordinates>58.9080129029502,45.4623890563628 58.906665430024,45.4610415834366 58.9093603758763,45.4610415834366 58.9080129029502,45.4623890563628</coordinates></LinearRing></innerBoundaryIs></Polygon></MultiGeometry>
+  </Placemark>
+</Folder>
+</Document></kml>

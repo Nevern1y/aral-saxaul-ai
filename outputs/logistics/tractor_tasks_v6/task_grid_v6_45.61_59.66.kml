@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document id="root_doc">
+<Schema name="task_grid_v6_45.61_59.66" id="task_grid_v6_45.61_59.66">
+	<SimpleField name="area_ha" type="float"></SimpleField>
+	<SimpleField name="low_risk_ha" type="float"></SimpleField>
+	<SimpleField name="moderate_risk_ha" type="float"></SimpleField>
+	<SimpleField name="grid_cell_deg" type="string"></SimpleField>
+</Schema>
+<Folder><name>task_grid_v6_45.61_59.66</name>
+  <Placemark id="task_grid_v6_45.61_59.66.1">
+	<name>task_grid_v6_45.61_59.66</name>
+	<name>0</name>
+	<description>291.6</description>
+	<Style><LineStyle><color>ff0000ff</color></LineStyle><PolyStyle><fill>0</fill></PolyStyle></Style>
+	<ExtendedData><SchemaData schemaUrl="#task_grid_v6_45.61_59.66">
+		<SimpleData name="area_ha">291.6</SimpleData>
+		<SimpleData name="low_risk_ha">0.1</SimpleData>
+	</SchemaData></ExtendedData>
+      <MultiGeometry><Polygon><outerBoundaryIs><LinearRing><coordinates>59.6545129040535,45.6510352660279 59.6545129040535,45.6456453743232 59.6518179582011,45.6483403201755 59.6477755394226,45.6496877931017 59.6545129040535,45.6510352660279</coordinates></LinearRing></outerBoundaryIs></Polygon><Polygon><outerBoundaryIs><LinearRing><coordinates>59.6221735538252,45.6483403201755 59.6194786079728,45.6456453743232 59.6102213862645,45.6515363335921 59.6102213862645,45.6625641451378 59.6214244581247,45.6625641451378 59.6235210267514,45.6604675765112 59.620826080899,45.6577726306588 59.6221735538252,45.6510352660279 59.6302583913823,45.6510352660279 59.635648283087,45.6537302118803 59.635648283087,45.6483403201755 59.6383432289393,45.6510352660279 59.6450805935702,45.6496877931017 59.6410381747917,45.6456453743232 59.6329533372346,45.6456453743232 59.6275634455299,45.6402554826185 59.620826080899,45.6416029555446 59.6235210267514,45.6469928472494 59.6221735538252,45.6483403201755</coordinates></LinearRing></outerBoundaryIs></Polygon></MultiGeometry>
+  </Placemark>
+</Folder>
+</Document></kml>

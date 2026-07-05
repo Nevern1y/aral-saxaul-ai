@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document id="root_doc">
+<Schema name="task_grid_v6_45.91_61.26" id="task_grid_v6_45.91_61.26">
+	<SimpleField name="area_ha" type="float"></SimpleField>
+	<SimpleField name="low_risk_ha" type="float"></SimpleField>
+	<SimpleField name="moderate_risk_ha" type="float"></SimpleField>
+	<SimpleField name="grid_cell_deg" type="string"></SimpleField>
+</Schema>
+<Folder><name>task_grid_v6_45.91_61.26</name>
+  <Placemark id="task_grid_v6_45.91_61.26.1">
+	<name>task_grid_v6_45.91_61.26</name>
+	<name>141.7</name>
+	<description>157.8</description>
+	<Style><LineStyle><color>ff0000ff</color></LineStyle><PolyStyle><fill>0</fill></PolyStyle></Style>
+	<ExtendedData><SchemaData schemaUrl="#task_grid_v6_45.91_61.26">
+		<SimpleData name="area_ha">16.1</SimpleData>
+		<SimpleData name="low_risk_ha">0.1</SimpleData>
+	</SchemaData></ExtendedData>
+      <MultiGeometry><Polygon><outerBoundaryIs><LinearRing><coordinates>61.2337511735356,45.8639359883642 61.2340941343422,45.8625641451378 61.2318305930186,45.8625641451378 61.2337511735356,45.8639359883642</coordinates></LinearRing></outerBoundaryIs></Polygon><Polygon><outerBoundaryIs><LinearRing><coordinates>61.2283612818309,45.8666309342166 61.2297087547571,45.8625885154381 61.2296925078902,45.8625641451378 61.2162583957955,45.8625641451378 61.2162340254953,45.8625885154381 61.2202764442738,45.8666309342166 61.2256663359785,45.8639359883642 61.2283612818309,45.8666309342166</coordinates></LinearRing></outerBoundaryIs></Polygon><Polygon><outerBoundaryIs><LinearRing><coordinates>61.2102213862645,45.8766859922259 61.2102213862645,45.8808303888786 61.2121916067167,45.8828006093307 61.2135390796429,45.8814531364046 61.2121916067167,45.8747157717737 61.2102213862645,45.8766859922259</coordinates></LinearRing></outerBoundaryIs></Polygon><Polygon><outerBoundaryIs><LinearRing><coordinates>61.2108441337906,45.8868430281093 61.2102213862645,45.8849747855312 61.2102213862645,45.887050610618 61.2108441337906,45.8868430281093</coordinates></LinearRing></outerBoundaryIs></Polygon><Polygon><outerBoundaryIs><LinearRing><coordinates>61.2102213862645,45.8958812945021 61.2121916067167,45.8962753385925 61.2121916067167,45.8908854468878 61.2102213862645,45.89285566734 61.2102213862645,45.8958812945021</coordinates></LinearRing></outerBoundaryIs></Polygon><Polygon><outerBoundaryIs><LinearRing><coordinates>61.2148865525691,45.8935803927402 61.2121916067167,45.8962753385925 61.2102213862645,45.896669382683 61.2102213862645,45.8996950098451 61.2102213862645,45.9004830980259 61.2102213862645,45.9050033192505 61.2135390796429,45.9030127032234 61.2121916067167,45.9016652302973 61.2162340254953,45.8976228115187 61.2148865525691,45.8935803927402</coordinates></LinearRing></outerBoundaryIs></Polygon><Polygon><outerBoundaryIs><LinearRing><coordinates>61.2175814984214,45.9420894180826 61.2102213862645,45.9452437518642 61.2102213862645,45.9549753924431 61.2121916067167,45.9582590931968 61.2162340254953,45.9488267827135 61.2216239172,45.9488267827135 61.2175814984214,45.9420894180826</coordinates></LinearRing></outerBoundaryIs></Polygon></MultiGeometry>
+  </Placemark>
+</Folder>
+</Document></kml>
