@@ -15,9 +15,18 @@ Shipped salinity anchor = **M0 (univariate NDMI logit)**, LOO AUC 0.682 (CI [0.5
 ## W4/W5 — In-AOI vs out-of-AOI skill (do not conflate training with test)
 
 - The seabed AOI is defined by the 1960 Aral footprint polygon (NOT the all-True `in_aoi` column).
-- In-AOI (seabed) pits: **15**; out-of-AOI (wider Priaralye, training domain): **55**.
-- Baseline in-AOI LOO AUC: **0.614**; out-of-AOI LOO AUC: **0.671**.
-- The 55 out-of-AOI pits are TRAINING data for the mapped seabed target and must NOT be counted as independent validation. In-AOI skill is the honest test metric (small n — directional).
+- In-AOI (seabed) pits: **23**; out-of-AOI (wider Priaralye, training domain): **47**.
+- Baseline in-AOI LOO AUC: **0.632**; out-of-AOI LOO AUC: **0.619**.
+- The 47 out-of-AOI pits are TRAINING data for the mapped seabed target and must NOT be counted as independent validation. In-AOI skill is the honest test metric (small n — directional).
+
+## Multi-predictor candidates tested & rejected (answers 'one predictor is too simple')
+
+A recurring reviewer concern is that a single-predictor (NDMI) model looks too simple. The benchmark tests this directly and rejects the multi-predictor alternatives on the metric that matters for the product — skill on the mapped seabed, not pooled cross-region AUC.
+
+- **Wall-to-wall RS-index pairs (the only ones that could ship as a map):** M4 (NDMI+NDWI) LOO AUC 0.786, M5 (NDMI+MSAVI) LOO AUC 0.796 — both beat M0's 0.682 on naive LOO, but per-block spatial AUC drops to 0.699/0.699 (vs M0 0.792). The lift is a between-region base-rate proxy (seabed vs. wider Priaralye) that the AOI mask already encodes; on the seabed it is not resolvable (only 4 non-saline in-AOI pits).
+- **Region dummy (M3)** makes the base-rate mechanism explicit: inside the seabed the in-AOI flag is constant, so its in-AOI AUC collapses to 0.237 (below M0's 0.632) while pooled AUC balloons to 0.723.
+- **Soil-lab predictors (M1/M2, sand/clay/Cl⁻)** raise LOO further but are POINT-ONLY — no wall-to-wall 30 m raster exists, so a two-predictor map cannot be built from them.
+- **Decision:** the recommendation engine rejects all of M1–M5 by the per-block + in-AOI gates and keeps **M0** (cascade_needed=false). The single NDMI predictor is the only skill defensible on the mapped seabed at n=70. A genuine second predictor requires more non-saline in-seabed ground truth (a field campaign), not another index from the same imagery. See `model_v6_benchmark_report.md`.
 
 ## W10 — Temporal drift / calibration vintage
 

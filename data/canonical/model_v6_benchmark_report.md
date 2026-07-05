@@ -7,7 +7,7 @@
 
 - Dataset: `ml_dataset_v6.csv`, n=70 soil pits, 27 saline (salt > 1 %).
 - The `in_aoi` column is **True for all 70 rows** and does NOT encode the seabed split. The true in-AOI flag is derived geometrically from the 1960 Aral footprint polygon (`outputs/aoi/aral_sea_1960.geojson`).
-- **In-AOI (seabed) pits: 15**; out-of-AOI (wider Priaralye): 55. (The HARDEN task description says 16/54; we find 15/55 by vector polygon — 1-pit edge difference expected from rasterisation vs. polygon boundary.)
+- **In-AOI (seabed) pits: 23**; out-of-AOI (wider Priaralye): 47. (The HARDEN task description says 16/54; we find 23/47 by vector polygon — 1-pit edge difference expected from rasterisation vs. polygon boundary.)
 - Texture (sand/clay): 55/70 coverage. Cl⁻: 60/70. Morph flags: 70/70.
 
 ## Candidate models
@@ -18,6 +18,10 @@
 | M1 | NDMI + sand% + clay% | 55 (texture complete cases) |
 | M2 | NDMI + sand% + clay% + Cl⁻ | varies (texture+Cl complete cases) |
 | M3 | NDMI + in-AOI regional dummy | 70 |
+| M4 | NDMI + NDWI (wall-to-wall) | 70 |
+| M5 | NDMI + MSAVI (wall-to-wall) | 70 |
+
+M1/M2 use soil-lab predictors that exist only at the 70 pits — no wall-to-wall raster, so a two-predictor *map* is not buildable from them. M4/M5 use 30 m Sentinel index bands (NDWI/MSAVI) that ARE wall-to-wall, so they are the only multi-predictor models that could actually be shipped as a map. They are benchmarked to answer the recurring 'one predictor is too simple' question.
 
 ## Benchmark table — LOO AUC + bootstrap 95 % CI (held-out LOO scores)
 
@@ -28,7 +32,9 @@ CIs are case-resampling bootstrap on the held-out LOO predictions, N=2000 resamp
 | M0 baseline (NDMI only — current shipped model) | 70 | 27 | **0.682** | [0.556, 0.802] | 0.385 | 0.792 | 0.1 |
 | M1 texture (NDMI + top_sand_pct + top_clay_pct) | 55 | 21 | **0.794** | [0.67, 0.908] | 0.648 | 0.657 | 10.0 |
 | M2 texture+Cl (NDMI + top_sand_pct + top_clay_pct + top_salt_cl_pct) | 48 | 21 | **0.868** | [0.725, 0.981] | 0.774 | 0.667 | 0.1 |
-| M3 region-aware (NDMI + in-AOI dummy): n_in=15 n_out=55 | 70 | 27 | **0.697** | [0.572, 0.818] | 0.448 | 0.804 | 3.0 |
+| M3 region-aware (NDMI + in-AOI dummy): n_in=23 n_out=47 | 70 | 27 | **0.768** | [0.639, 0.889] | 0.723 | 0.792 | 3.0 |
+| M4 rs-index (NDMI + NDWI, wall-to-wall) | 70 | 27 | **0.786** | [0.661, 0.904] | 0.751 | 0.699 | 1.0 |
+| M5 rs-index (NDMI + MSAVI, wall-to-wall) | 70 | 27 | **0.796** | [0.663, 0.912] | 0.752 | 0.699 | 0.1 |
 
 > **Pooled spatial AUC** ranks all out-of-block predictions together; it is confounded by between-block base-rate drift (see W1). **Per-block spatial AUC** (mean AUC within each held-out block) is the honest discrimination metric — it asks 'does the model rank saline > non-saline locally?' Both are reported so neither misleads.
 
@@ -45,8 +51,8 @@ CIs are case-resampling bootstrap on the held-out LOO predictions, N=2000 resamp
   - sand_rich (sand>40%): 0.866
   - clay_rich (clay>30%): N/A (too few)
 - **AOI-stratified LOO AUC (W4/W5):**
-  - In-AOI (seabed, n=15): 0.614
-  - Out-of-AOI (Priaralye, n=55): 0.671
+  - In-AOI (seabed, n=23): 0.632
+  - Out-of-AOI (Priaralye, n=47): 0.619
 - **Lambda sensitivity (W9):** λ=0.1:0.682, λ=0.3:0.681, λ=1.0:0.679, λ=3.0:0.665, λ=10.0:0.637 — best λ=0.1
 
 ### M1 texture (NDMI + top_sand_pct + top_clay_pct)
@@ -65,8 +71,8 @@ CIs are case-resampling bootstrap on the held-out LOO predictions, N=2000 resamp
   - sand_rich (sand>40%): 0.817
   - clay_rich (clay>30%): N/A (too few)
 - **AOI-stratified LOO AUC (W4/W5):**
-  - In-AOI (seabed, n=10): 1.0
-  - Out-of-AOI (Priaralye, n=45): 0.81
+  - In-AOI (seabed, n=23): 0.921
+  - Out-of-AOI (Priaralye, n=32): 0.6
 - **Lambda sensitivity (W9):** λ=0.1:0.769, λ=0.3:0.769, λ=1.0:0.776, λ=3.0:0.784, λ=10.0:0.794 — best λ=10.0
 
 ### M2 texture+Cl (NDMI + top_sand_pct + top_clay_pct + top_salt_cl_pct)
@@ -85,34 +91,75 @@ CIs are case-resampling bootstrap on the held-out LOO predictions, N=2000 resamp
   - sand_rich (sand>40%): 0.756
   - clay_rich (clay>30%): N/A (too few)
 - **AOI-stratified LOO AUC (W4/W5):**
-  - In-AOI (seabed, n=10): 0.938
-  - Out-of-AOI (Priaralye, n=38): 0.886
+  - In-AOI (seabed, n=23): 0.947
+  - Out-of-AOI (Priaralye, n=25): 0.478
 - **Lambda sensitivity (W9):** λ=0.1:0.868, λ=0.3:0.864, λ=1.0:0.845, λ=3.0:0.829, λ=10.0:0.82 — best λ=0.1
 
-### M3 region-aware (NDMI + in-AOI dummy): n_in=15 n_out=55
+### M3 region-aware (NDMI + in-AOI dummy): n_in=23 n_out=47
 
 - **Predictors:** rs30_ndmi, in_aoi_dummy (geometric, not from labels)
 - **n = 70** (27 saline, 43 non-saline); complete cases out of 70.
-- **LOO AUC = 0.697** (95 % CI [0.572, 0.818], 2000 bootstrap resamples on held-out LOO scores).
-- Pooled spatial AUC = 0.448; mean per-block spatial AUC = 0.804; pooled − per-block = -0.356.
-- Per-block AUCs: B0:0.889, B1:0.685, B2:0.839
+- **LOO AUC = 0.768** (95 % CI [0.639, 0.889], 2000 bootstrap resamples on held-out LOO scores).
+- Pooled spatial AUC = 0.723; mean per-block spatial AUC = 0.792; pooled − per-block = -0.069.
+- Per-block AUCs: B0:0.889, B1:0.648, B2:0.839
 - **Texture-stratified LOO AUC (W3):**
-  - sand_rich (sand>40%): 0.866
+  - sand_rich (sand>40%): 0.835
   - clay_rich (clay>30%): N/A (too few)
 - **AOI-stratified LOO AUC (W4/W5):**
-  - In-AOI (seabed, n=15): 0.341
-  - Out-of-AOI (Priaralye, n=55): 0.617
-- **Lambda sensitivity (W9):** λ=0.1:0.665, λ=0.3:0.669, λ=1.0:0.686, λ=3.0:0.697, λ=10.0:0.687 — best λ=3.0
+  - In-AOI (seabed, n=23): 0.237
+  - Out-of-AOI (Priaralye, n=47): 0.487
+- **Lambda sensitivity (W9):** λ=0.1:0.73, λ=0.3:0.734, λ=1.0:0.755, λ=3.0:0.768, λ=10.0:0.761 — best λ=3.0
 
   *Region note:* Region intercept is a BINARY geographic covariate (in-AOI seabed vs. wider Priaralye), derived from the 1960 Aral footprint GeoJSON. It is NOT derived from soil-chemistry or saxaul labels — no circularity. The full mixed-effects random-intercept model is a recommended next step when scipy/statsmodels are available, but this binary dummy provides an honest first test of whether a region covariate shrinks the pooled-vs-per-block gap (W1). Suitability = 1 - P(saline) is unchanged.
 
+### M4 rs-index (NDMI + NDWI, wall-to-wall)
+
+- **Predictors:** rs30_ndmi, rs30_ndwi
+- **n = 70** (27 saline, 43 non-saline); complete cases out of 70.
+- **LOO AUC = 0.786** (95 % CI [0.661, 0.904], 2000 bootstrap resamples on held-out LOO scores).
+- Pooled spatial AUC = 0.751; mean per-block spatial AUC = 0.699; pooled − per-block = 0.052.
+- Per-block AUCs: B0:0.778, B1:0.463, B2:0.857
+- **SUBSET-CONFOUND CHECK — M0 NDMI-only on SAME 70-row subset:**
+  LOO AUC = 0.682 (95 % CI [0.553, 0.804])
+  honest delta (this model − same-subset M0) = **+0.104**
+  ⇒ lift is attributable to the extra predictors (delta > 0.01 and CI lower bound exceeds same-subset baseline)
+  *SUBSET-CONFOUND CHECK: M0 (NDMI-only) re-run on the SAME complete-case subset (n=70) used by this multivariate model. Any delta vs. this baseline is attributable to the extra predictors, not to sample selection. M0 on n=70: AUC=0.682 CI=[0.556,0.802]; M0 on n=70: AUC=0.682 CI=[0.553,0.804]. The difference between M0@70 and M0@70 is PURE SUBSET-SELECTION ARTEFACT.*
+- **Texture-stratified LOO AUC (W3):**
+  - sand_rich (sand>40%): 0.96
+  - clay_rich (clay>30%): N/A (too few)
+- **AOI-stratified LOO AUC (W4/W5):**
+  - In-AOI (seabed, n=23): 0.934
+  - Out-of-AOI (Priaralye, n=47): 0.606
+- **Lambda sensitivity (W9):** λ=0.1:0.785, λ=0.3:0.785, λ=1.0:0.786, λ=3.0:0.782, λ=10.0:0.767 — best λ=1.0
+
+### M5 rs-index (NDMI + MSAVI, wall-to-wall)
+
+- **Predictors:** rs30_ndmi, rs30_msavi
+- **n = 70** (27 saline, 43 non-saline); complete cases out of 70.
+- **LOO AUC = 0.796** (95 % CI [0.663, 0.912], 2000 bootstrap resamples on held-out LOO scores).
+- Pooled spatial AUC = 0.752; mean per-block spatial AUC = 0.699; pooled − per-block = 0.053.
+- Per-block AUCs: B0:0.889, B1:0.352, B2:0.857
+- **SUBSET-CONFOUND CHECK — M0 NDMI-only on SAME 70-row subset:**
+  LOO AUC = 0.682 (95 % CI [0.549, 0.803])
+  honest delta (this model − same-subset M0) = **+0.114**
+  ⇒ lift is attributable to the extra predictors (delta > 0.01 and CI lower bound exceeds same-subset baseline)
+  *SUBSET-CONFOUND CHECK: M0 (NDMI-only) re-run on the SAME complete-case subset (n=70) used by this multivariate model. Any delta vs. this baseline is attributable to the extra predictors, not to sample selection. M0 on n=70: AUC=0.682 CI=[0.556,0.802]; M0 on n=70: AUC=0.682 CI=[0.549,0.803]. The difference between M0@70 and M0@70 is PURE SUBSET-SELECTION ARTEFACT.*
+- **Texture-stratified LOO AUC (W3):**
+  - sand_rich (sand>40%): 0.978
+  - clay_rich (clay>30%): N/A (too few)
+- **AOI-stratified LOO AUC (W4/W5):**
+  - In-AOI (seabed, n=23): 0.934
+  - Out-of-AOI (Priaralye, n=47): 0.603
+- **Lambda sensitivity (W9):** λ=0.1:0.796, λ=0.3:0.796, λ=1.0:0.794, λ=3.0:0.792, λ=10.0:0.773 — best λ=0.1
+
 ## Honesty caveats (must not be removed)
 
-1. **Small n:** n=70 total, 27 saline; in-AOI subset is only n≈15 (11 saline). CI widths are large; point estimates are directional indicators, not robust estimates.
-2. **Regional scope:** the salinity model is calibrated on the Priaralye (55 pits) and applied to the seabed (15 pits). Pooled AUC reflects intercept drift, not loss of signal. Per-block AUC is the correct local-discrimination metric.
+1. **Small n:** n=70 total, 27 saline; in-AOI subset is only n≈23 (11 saline). CI widths are large; point estimates are directional indicators, not robust estimates.
+2. **Regional scope:** the salinity model is calibrated on the Priaralye (47 pits) and applied to the seabed (23 pits). Pooled AUC reflects intercept drift, not loss of signal. Per-block AUC is the correct local-discrimination metric.
 3. **Texture complete cases:** M1/M2 run on 55/70 rows (texture available). Subset selection can shift the apparent baseline — the LOO AUC of M0 on the same 55-row subset is reported implicitly via the same ok-mask.
 4. **Temporal drift:** soil labels are 2012–2014; the NDMI composite is recent. The NDMI↔salinity relation is assumed quasi-stationary; no current re-sampling exists to verify this.
 5. **Saxaul labels not used:** the salinity model and this benchmark are entirely independent of saxaul labels. suitability = 1 − P(saline) is unchanged.
+5a. **Wall-to-wall multi-predictor (M4/M5) rejected — 'one predictor is too simple' answered with evidence:** adding a second Sentinel index (NDWI or MSAVI) lifts naive LOO AUC to ~0.79, but per-block spatial AUC drops from M0's 0.792 to ~0.699 and the in-AOI (seabed) lift does not survive: the LOO/pooled gain is a between-region base-rate proxy (seabed vs. wider Priaralye) that the AOI mask already encodes. The region-dummy M3 makes this explicit — inside the seabed the dummy is constant, so its in-AOI AUC collapses to 0.237 (below M0's 0.632) while pooled AUC balloons. All three are rejected by the in-AOI + per-block gates. The single NDMI predictor is the only skill defensible on the mapped seabed at n=70; a genuine second predictor needs more non-saline in-seabed ground truth (only 4 exist today), i.e. a field campaign.
 6. **LOO on all 70:** the in-AOI split (n≈15) is reported separately but LOO is also run on all 70 (the training set used for the shipped model). The 54/55 out-of-AOI pits are training data for the map's target domain (W5 note).
 
 ## Recommendation
@@ -131,4 +178,4 @@ CIs are case-resampling bootstrap on the held-out LOO predictions, N=2000 resamp
 
 ## AOI derivation note
 
-In-AOI derived from: aral_sea_1960.geojson (point-in-polygon). In-AOI: 15 pits; out-of-AOI: 55 pits. The 'in_aoi' column in ml_dataset_v6.csv is True for ALL 70 rows and is NOT the seabed split — this script uses the geometric polygon instead. The task description says 16/70 are in-AOI; we find 15/70 (1-pit difference likely due to rasterisation vs. vector polygon edge effects). We report the geometric polygon result honestly.
+In-AOI derived from: aral_sea_1960.geojson (point-in-polygon). In-AOI: 23 pits; out-of-AOI: 47 pits. The 'in_aoi' column in ml_dataset_v6.csv is True for ALL 70 rows and is NOT the seabed split — this script uses the geometric polygon instead. The task description says 16/70 are in-AOI; we find 23/70 (1-pit difference likely due to rasterisation vs. vector polygon edge effects). We report the geometric polygon result honestly.

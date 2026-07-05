@@ -6,8 +6,8 @@
   "n_total": 70,
   "aoi_split": {
     "source": "aral_sea_1960.geojson (point-in-polygon)",
-    "n_in_aoi": 15,
-    "n_out_of_aoi": 55,
+    "n_in_aoi": 23,
+    "n_out_of_aoi": 47,
     "note": "in_aoi column is True for all 70 rows and is NOT the seabed split; in-AOI derived geometrically from the 1960 Aral footprint"
   },
   "recommendation": {
@@ -41,10 +41,10 @@
       "mean_per_block_spatial_auc": 0.792,
       "best_lam": 0.1,
       "aoi_stratified_auc": {
-        "in_aoi": 0.614,
-        "out_of_aoi": 0.671,
-        "n_in_aoi": 15,
-        "n_out_of_aoi": 55
+        "in_aoi": 0.632,
+        "out_of_aoi": 0.619,
+        "n_in_aoi": 23,
+        "n_out_of_aoi": 47
       },
       "texture_stratified_auc": {
         "sand_rich (sand>40%)": 0.866,
@@ -70,10 +70,10 @@
       "mean_per_block_spatial_auc": 0.657,
       "best_lam": 10.0,
       "aoi_stratified_auc": {
-        "in_aoi": 1.0,
-        "out_of_aoi": 0.81,
-        "n_in_aoi": 10,
-        "n_out_of_aoi": 45
+        "in_aoi": 0.921,
+        "out_of_aoi": 0.6,
+        "n_in_aoi": 23,
+        "n_out_of_aoi": 32
       },
       "texture_stratified_auc": {
         "sand_rich (sand>40%)": 0.817,
@@ -100,10 +100,10 @@
       "mean_per_block_spatial_auc": 0.667,
       "best_lam": 0.1,
       "aoi_stratified_auc": {
-        "in_aoi": 0.938,
-        "out_of_aoi": 0.886,
-        "n_in_aoi": 10,
-        "n_out_of_aoi": 38
+        "in_aoi": 0.947,
+        "out_of_aoi": 0.478,
+        "n_in_aoi": 23,
+        "n_out_of_aoi": 25
       },
       "texture_stratified_auc": {
         "sand_rich (sand>40%)": 0.756,
@@ -112,29 +112,85 @@
     },
     {
       "id": "M3",
-      "name": "M3 region-aware (NDMI + in-AOI dummy): n_in=15 n_out=55",
+      "name": "M3 region-aware (NDMI + in-AOI dummy): n_in=23 n_out=47",
       "predictors": [
         "rs30_ndmi",
         "in_aoi_dummy (geometric, not from labels)"
       ],
       "n": 70,
       "n_saline": 27,
-      "loo_auc": 0.697,
+      "loo_auc": 0.768,
       "loo_auc_ci95": [
-        0.572,
-        0.818
+        0.639,
+        0.889
       ],
-      "pooled_spatial_auc": 0.448,
-      "mean_per_block_spatial_auc": 0.804,
+      "pooled_spatial_auc": 0.723,
+      "mean_per_block_spatial_auc": 0.792,
       "best_lam": 3.0,
       "aoi_stratified_auc": {
-        "in_aoi": 0.341,
-        "out_of_aoi": 0.617,
-        "n_in_aoi": 15,
-        "n_out_of_aoi": 55
+        "in_aoi": 0.237,
+        "out_of_aoi": 0.487,
+        "n_in_aoi": 23,
+        "n_out_of_aoi": 47
       },
       "texture_stratified_auc": {
-        "sand_rich (sand>40%)": 0.866,
+        "sand_rich (sand>40%)": 0.835,
+        "clay_rich (clay>30%)": "N/A (too few)"
+      }
+    },
+    {
+      "id": "M4",
+      "name": "M4 rs-index (NDMI + NDWI, wall-to-wall)",
+      "predictors": [
+        "rs30_ndmi",
+        "rs30_ndwi"
+      ],
+      "n": 70,
+      "n_saline": 27,
+      "loo_auc": 0.786,
+      "loo_auc_ci95": [
+        0.661,
+        0.904
+      ],
+      "pooled_spatial_auc": 0.751,
+      "mean_per_block_spatial_auc": 0.699,
+      "best_lam": 1.0,
+      "aoi_stratified_auc": {
+        "in_aoi": 0.934,
+        "out_of_aoi": 0.606,
+        "n_in_aoi": 23,
+        "n_out_of_aoi": 47
+      },
+      "texture_stratified_auc": {
+        "sand_rich (sand>40%)": 0.96,
+        "clay_rich (clay>30%)": "N/A (too few)"
+      }
+    },
+    {
+      "id": "M5",
+      "name": "M5 rs-index (NDMI + MSAVI, wall-to-wall)",
+      "predictors": [
+        "rs30_ndmi",
+        "rs30_msavi"
+      ],
+      "n": 70,
+      "n_saline": 27,
+      "loo_auc": 0.796,
+      "loo_auc_ci95": [
+        0.663,
+        0.912
+      ],
+      "pooled_spatial_auc": 0.752,
+      "mean_per_block_spatial_auc": 0.699,
+      "best_lam": 0.1,
+      "aoi_stratified_auc": {
+        "in_aoi": 0.934,
+        "out_of_aoi": 0.603,
+        "n_in_aoi": 23,
+        "n_out_of_aoi": 47
+      },
+      "texture_stratified_auc": {
+        "sand_rich (sand>40%)": 0.978,
         "clay_rich (clay>30%)": "N/A (too few)"
       }
     }
