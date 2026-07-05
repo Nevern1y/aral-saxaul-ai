@@ -31,30 +31,30 @@
   "top_correlations": [
     {
       "feature": "prof_caso4_pct",
-      "spearman_rho": 0.466,
-      "p_value": 0.175,
-      "n": 10
+      "spearman_rho": 0.425,
+      "p_value": 0.1478,
+      "n": 13
     },
     {
       "feature": "top_caco3_pct",
-      "spearman_rho": 0.393,
-      "p_value": 0.0469,
-      "n": 26
+      "spearman_rho": 0.392,
+      "p_value": 0.0324,
+      "n": 30
     },
     {
       "feature": "prof_caco3_pct",
-      "spearman_rho": 0.336,
-      "p_value": 0.0805,
-      "n": 28
+      "spearman_rho": 0.308,
+      "p_value": 0.0867,
+      "n": 32
     },
     {
-      "feature": "top_salt_cl_pct",
+      "feature": "prof_salt_cl_pct",
       "spearman_rho": -0.265,
       "p_value": 0.0659,
       "n": 49
     },
     {
-      "feature": "prof_salt_cl_pct",
+      "feature": "top_salt_cl_pct",
       "spearman_rho": -0.265,
       "p_value": 0.0659,
       "n": 49
@@ -66,16 +66,10 @@
       "n": 56
     },
     {
-      "feature": "top_exch_sum",
-      "spearman_rho": -0.213,
-      "p_value": 0.1303,
-      "n": 52
-    },
-    {
       "feature": "top_exch_na",
-      "spearman_rho": -0.213,
-      "p_value": 0.1303,
-      "n": 52
+      "spearman_rho": -0.232,
+      "p_value": 0.0851,
+      "n": 56
     },
     {
       "feature": "prof_sand_pct",
@@ -88,6 +82,12 @@
       "spearman_rho": 0.209,
       "p_value": 0.1594,
       "n": 47
+    },
+    {
+      "feature": "prof_exch_na",
+      "spearman_rho": -0.207,
+      "p_value": 0.1255,
+      "n": 56
     },
     {
       "feature": "prof_hygroscopic_water_pct",
@@ -114,10 +114,10 @@
       "n": 56
     },
     {
-      "feature": "prof_exch_sum",
-      "spearman_rho": -0.201,
-      "p_value": 0.154,
-      "n": 52
+      "feature": "rs30_msavi",
+      "spearman_rho": 0.196,
+      "p_value": 0.1467,
+      "n": 56
     }
   ],
   "temporal_mismatch_note": "soil/vegetation observed 2012-2014 vs Sentinel-2 composite 2025; correlations are indicative, not contemporaneous",

@@ -92,6 +92,74 @@ def is_profile_id(value) -> bool:
     return bool(re.search(r"\d[АA]?/\d", str(value)))
 
 
+# ---------------------------------------------------------------------------
+# Soil-TYPE (genetic classification) recovery
+# ---------------------------------------------------------------------------
+# In the appendix-B lab tables each profile is preceded by a header row whose
+# first cell is the soil-type name ("Солончак приморский", "Такыр солончаковый",
+# "Рисово-болотная …"). is_profile_id() correctly drops these rows for the layer
+# tables, but the type text itself is a strong in-region signal: solonchak pits
+# average ~3.25 % topsoil salts (65 % saline) vs ~0 % for sand/brown-desert, and
+# rice/irrigated/ploughed types mark anthropogenic (non-seabed) land. We forward-
+# fill the type onto each following profile and expose it for QA / AOI exclusion
+# validation ONLY — it is never a model feature (the shipped model is NDMI->salt).
+
+# coarse genetic class from the free-text type name (first match wins)
+SOIL_CLASS_RULES = [
+    ("solonchak", ["солончак"]),
+    ("solonets", ["солонец"]),
+    ("takyr", ["такыр"]),
+    ("meadow_bog", ["лугово-болот", "болотн"]),
+    ("meadow", ["луговая", "лугово-", "пойменн"]),
+    ("brown_desert", ["бурая"]),
+    ("sand", ["песок", "песчан"]),
+    ("primitive_coastal", ["примитивн"]),
+]
+# anthropogenic / irrigated markers (non-seabed land use)
+SOIL_ANTHRO_TOKENS = ["рисов", "орошаем", "распах", "пахотн", "нарушен", "залеж"]
+
+
+def classify_soil_type(type_text: str) -> tuple[str, int]:
+    """Map a free-text soil-type name to (coarse class, anthropogenic 0/1)."""
+    t = str(type_text).strip().lower()
+    soil_class = "other"
+    for name, tokens in SOIL_CLASS_RULES:
+        if any(tok in t for tok in tokens):
+            soil_class = name
+            break
+    anthro = int(any(tok in t for tok in SOIL_ANTHRO_TOKENS))
+    return soil_class, anthro
+
+
+def build_soil_types() -> pd.DataFrame:
+    """Recover per-pit soil-type by forward-filling the header rows in the
+    interim chem/water long tables (document order preserved by Phase 1).
+
+    Returns a DataFrame [pit_id, soil_type, soil_class, soil_anthro_flag].
+    The chem table is primary (full coverage); water fills any gaps.
+    """
+    mapping: dict[str, str] = {}
+    for fname in ("docx_chem_physchem_long.csv", "docx_water_extract_long.csv"):
+        path = INTERIM / fname
+        if not path.exists():
+            continue
+        df = pd.read_csv(path, dtype=str, keep_default_na=False)
+        current: str | None = None
+        for pid in df["pit_id"]:
+            if is_profile_id(pid):
+                key = norm_id(pid)
+                if key not in mapping and current:
+                    mapping[key] = current
+            elif str(pid).strip():
+                current = str(pid).strip()
+    rows = []
+    for pid, type_text in mapping.items():
+        soil_class, anthro = classify_soil_type(type_text)
+        rows.append({"pit_id": pid, "soil_type": type_text,
+                     "soil_class": soil_class, "soil_anthro_flag": anthro})
+    return pd.DataFrame(rows)
+
+
 def parse_depth(value) -> tuple[float, float]:
     text = "" if value is None else str(value).replace(",", ".")
     nums = re.findall(r"\d+(?:\.\d+)?", text)
@@ -256,6 +324,13 @@ def main() -> None:
     CANON.mkdir(parents=True, exist_ok=True)
 
     profiles = build_profiles()
+
+    # Recover the per-pit soil-type (genetic classification) from the header rows
+    # and attach it to profiles. QA / AOI-exclusion use only — never a model feature.
+    soil_types = build_soil_types()
+    profiles = profiles.merge(soil_types, on="pit_id", how="left")
+    profiles["soil_anthro_flag"] = profiles["soil_anthro_flag"].fillna(0).astype(int)
+
     chem, water, gran = load_chem(), load_water(), load_granulometry()
     layers = merge_layers(chem, water, gran)
 
@@ -285,6 +360,9 @@ def main() -> None:
         "n_lab_with_coords": len(lab_ids & coord_ids),
         "n_lab_without_coords": len(lab_ids - coord_ids),
         "lab_without_coords": sorted(lab_ids - coord_ids),
+        "n_profiles_with_soil_type": int(profiles["soil_type"].notna().sum()),
+        "soil_class_counts": profiles["soil_class"].value_counts().to_dict(),
+        "n_anthropogenic_profiles": int(profiles["soil_anthro_flag"].sum()),
         "outputs": {
             "profiles": str(CANON / "profiles_v6.csv"),
             "soil_layers": str(CANON / "soil_layers_v6.csv"),

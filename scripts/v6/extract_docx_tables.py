@@ -108,6 +108,26 @@ def is_header_or_enum(cell0: str, row_cells: list[str]) -> bool:
     return False
 
 
+def normalize_split_columns(cells: list[str], family: str, ncols: int) -> tuple[list[str], int]:
+    """Collapse a duplicated split cell so a mis-sized table maps to a known layout.
+
+    One Б.2 (2013) chem_physchem table renders with 19 physical columns instead of
+    18 because a single logical column (the enumeration row shows label "15" twice)
+    is split into two identical adjacent cells. Without this, its data rows fall into
+    the positional `cX` fallback and 4 profiles (01/13, 12/13, 16/13, 26/13) lose ALL
+    chemistry downstream. When the two split cells carry identical values we drop the
+    second and re-map to the canonical 18-column names; if they ever differ we leave
+    the row untouched so the positional fallback still preserves the raw data for audit.
+
+    Returns (possibly-collapsed cells, effective column count).
+    """
+    if family == "chem_physchem" and ncols == 19 and len(cells) == 19:
+        # physical indices 14 and 15 are the duplicated column (both labelled "15")
+        if cells[14].strip() == cells[15].strip():
+            return cells[:15] + cells[16:], 18
+    return cells, ncols
+
+
 def main() -> None:
     INTERIM.mkdir(parents=True, exist_ok=True)
     document = docx.Document(str(DOCX))
@@ -144,8 +164,6 @@ def main() -> None:
         family, year = FAMILY[letter]
         for t in tabs:
             ncols = len(t.columns)
-            colkey = f"{family}_{ncols}"
-            colnames = COLS.get(colkey)
             kept = 0
             for r in t.rows:
                 cells = [c.text.strip().replace("\n", " ") for c in r.cells]
@@ -155,6 +173,10 @@ def main() -> None:
                     continue
                 if not cells[0].strip():  # no profile id on this row
                     continue
+                # Collapse a duplicated split cell (e.g. the 19-col Б.2 chem table) so
+                # the row maps to the canonical layout instead of the positional fallback.
+                cells, eff_cols = normalize_split_columns(cells, family, ncols)
+                colnames = COLS.get(f"{family}_{eff_cols}")
                 if colnames and len(cells) >= len(colnames):
                     rec = {colnames[i]: cells[i] for i in range(len(colnames))}
                 else:

@@ -209,10 +209,14 @@ def main() -> None:
              "## Validated core: NDMI → soil salinity, suitability = 1 − P(saline)",
              f"- NDMI→P(salts>1%): **LOO AUC = {round(sal['loo'],3)}**, n={int(len(ys))}, "
              f"{int(ys.sum())} saline (independent of saxaul labels).",
-             f"- Derived suitability vs saxaul labels: **AUC = {round(auc_vs_label,3)}** "
-             f"(n={int(mk.sum())}, {int(y_lab[mk].sum())} positive).",
+             f"- Derived suitability vs saxaul labels: AUC = {round(auc_vs_label,3)} "
+             f"(n={int(mk.sum())}, {int(y_lab[mk].sum())} positive). **Consistency check, NOT "
+             f"independent validation:** the saxaul positives are all low-salinity pits and the "
+             f"suitability score is a monotone function of the same salinity target, so this AUC "
+             f"reflects the shared salinity axis, not a separately demonstrated habitat signal.",
              f"- Derived suitability vs INDEPENDENT AralField 2018 Haloxylon: "
-             f"**AUC = {auc_vs_aralfield}** (n=11, 3 present).", "",
+             f"**AUC = {auc_vs_aralfield}** (n=11, 3 present) — the only genuinely external saxaul "
+             f"check; at ≈0.5 it shows no demonstrated saxaul skill and must not be sold as one.", "",
              "## Salinity model coefficients (standardized)", "",
              "| term | coef |", "|------|------|",
              f"| intercept | {sal['beta'][0]:+.3f} |",

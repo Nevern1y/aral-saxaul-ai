@@ -105,6 +105,18 @@ NODATA_F = -9999.0
 VEG_MSAVI_CUT = 0.15          # tuned to reproduce V5 vegetation fraction (~12.6 %)
 ROW_BLOCK = 512               # windowed processing to bound memory on the 166 Mpx VRT
 
+# NE Syrdarya-delta irrigated-cropland exclusion (DISPLAY only).
+# The dried-seabed AOI reaches into the active Syrdarya delta on the NE edge, where
+# irrigated fields green up and read as VEGETATION. Inside this lon/lat box we drop
+# vegetation pixels to NoData on the map so the product does not paint irrigated /
+# inhabited delta land as part of the restoration target. This is a presentation
+# gate: it removes only VEGETATION (never candidate/moderate/strong salinity pixels),
+# so no seabed planting-decision pixel is affected, and it does not touch the
+# salinity-model coefficients or the continuous index. Verified: 0 of the 70 lab
+# pits are vegetation-zone inside this box, so no validation point is dropped.
+NE_DELTA_BOX = {"lat_min": 45.9, "lon_min": 61.2}   # north & east of these -> delta
+EXCLUDE_IRRIGATED_VEG = True
+
 # 30 m grid geometry (EPSG:4326): pixel size in degrees -> ground metres per latitude
 DEG = 0.00026949458523585647
 M_PER_DEG_LAT = 110540.0
@@ -125,6 +137,22 @@ def _sha256_file(path: Path) -> str:
         for chunk in iter(lambda: fh.read(1 << 20), b""):
             h.update(chunk)
     return h.hexdigest()
+
+
+def wilson_ci(k: int, n: int, z: float = 1.96) -> list | None:
+    """Wilson 95% CI for a binomial proportion k/n. Returns [lo, hi] rounded, or None.
+
+    Used so the pit-detector sensitivity/specificity ship with an honest interval:
+    specificity 1.0 on n=4 negatives has CI ~[0.51, 1.0] — not evidence of a perfect
+    screen. A ministry reviewer must see n and the interval, not just the point value.
+    """
+    if n <= 0:
+        return None
+    p = k / n
+    denom = 1.0 + z * z / n
+    center = (p + z * z / (2 * n)) / denom
+    half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / denom
+    return [round(max(0.0, center - half), 2), round(min(1.0, center + half), 2)]
 
 
 def assert_vrt_tile_offsets(vrt_path: Path, tiles: list, grid_w: int) -> None:
@@ -329,6 +357,21 @@ def main() -> None:
                     zones[veg] = VEGETATION
                     # water/nodata stays 0
 
+                    # ---- NE Syrdarya-delta irrigated-cropland exclusion (display) ----
+                    # Inside the delta box, drop VEGETATION pixels (irrigated fields) to
+                    # NoData so the map does not paint inhabited/irrigated delta land as
+                    # part of the seabed target. Only class 10 is affected; candidate and
+                    # salinity classes are untouched, so no planting-decision pixel is lost.
+                    if EXCLUDE_IRRIGATED_VEG:
+                        rows_abs = row0 + np.arange(nrows)
+                        cols_abs = col0 + np.arange(tW)
+                        lat_px = transform.f + transform.e * (rows_abs + 0.5)   # (nrows,)
+                        lon_px = transform.c + transform.a * (cols_abs + 0.5)   # (tW,)
+                        in_delta = (lat_px[:, None] >= NE_DELTA_BOX["lat_min"]) & \
+                                   (lon_px[None, :] >= NE_DELTA_BOX["lon_min"])
+                        drop_irrig = (zones == VEGETATION) & in_delta
+                        zones[drop_irrig] = WATER_NODATA
+
                     win_dst = Window(col0, row0, tW, nrows)
                     dst_i.write(index, 1, window=win_dst)
                     dst_z.write(zones, 1, window=win_dst)
@@ -381,10 +424,29 @@ def main() -> None:
             "Sentinel-2 SCL band, so V5's SCL-based water masking is not reproduced. Wet "
             "saline playa that V5 hid as water surfaces here as high-NDMI strong-salinity (class 4)."
         ),
+        "irrigated_delta_exclusion": {
+            "enabled": EXCLUDE_IRRIGATED_VEG,
+            "box": NE_DELTA_BOX,
+            "rule": "vegetation pixels north/east of the box -> NoData (display only)",
+            "note": ("Removes irrigated Syrdarya-delta cropland that greens up and reads as "
+                     "vegetation; affects class 10 only, never candidate/salinity classes, and "
+                     "does not touch the salinity-model coefficients or the continuous index."),
+        },
         "zone_pixels": {str(k): int(v) for k, v in zone_px.items()},
         "zone_area_ha": {str(k): round(v, 1) for k, v in zone_ha.items()},
         "total_area_ha": round(total_ha, 1),
+        # Share of BARE land (non-water, non-veg) by salinity class — the decision-relevant
+        # split. Report this rather than a single mean: the field is dominated by strong-
+        # salinity playa, so a lone "mean suitability" of a bimodal-ish surface misleads.
+        "bare_land_zone_share_pct": {
+            "1_candidate": round(100.0 * zone_ha[OPTIMAL] / max(1e-9, zone_ha[OPTIMAL] + zone_ha[RISK_DRY_SALT] + zone_ha[DEAD_WET_TOXIC]), 1),
+            "3_moderate": round(100.0 * zone_ha[RISK_DRY_SALT] / max(1e-9, zone_ha[OPTIMAL] + zone_ha[RISK_DRY_SALT] + zone_ha[DEAD_WET_TOXIC]), 1),
+            "4_strong": round(100.0 * zone_ha[DEAD_WET_TOXIC] / max(1e-9, zone_ha[OPTIMAL] + zone_ha[RISK_DRY_SALT] + zone_ha[DEAD_WET_TOXIC]), 1),
+        },
         "mean_suitability_bare_land": round(suit_sum / suit_area, 4) if suit_area else None,
+        "mean_suitability_caveat": (
+            "Single mean over bare land is diluted by NDMI support-clipping and by the "
+            "strong-salinity majority; use bare_land_zone_share_pct for decisions."),
         "class_names": {
             "0": "Water / NoData", "1": "Candidate (low salinity)",
             "3": "Moderate salinity risk", "4": "Strong salinity risk",
@@ -532,7 +594,16 @@ def write_pit_validation() -> None:
         "saline_detector_zone34": {
             "TP": tp, "FP": fp, "FN": fn, "TN": tn,
             "sensitivity": round(tp / (tp + fn), 2) if tp + fn else None,
-            "specificity": round(tn / (tn + fp), 2) if tn + fp else None},
+            "specificity": round(tn / (tn + fp), 2) if tn + fp else None,
+            # Honest small-n intervals: specificity rests on only (tn+fp) negatives.
+            "sensitivity_n": tp + fn,
+            "specificity_n": tn + fp,
+            "sensitivity_ci95": wilson_ci(tp, tp + fn),
+            "specificity_ci95": wilson_ci(tn, tn + fp),
+            "small_n_caveat": (
+                "Point sens/spec on a handful of in-AOI pits; read the Wilson CIs. "
+                "A specificity of 1.0 on very few negatives is not a validated perfect screen."),
+        },
         "mean_salt_by_zone": {
             str(int(k)): round(float(pd.to_numeric(g["measured_salt_pct"], errors="coerce").mean()), 2)
             for k, g in out[scored].groupby("v6_zone")},

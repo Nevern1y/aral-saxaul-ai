@@ -5,8 +5,8 @@ Direct NDMI+MSAVI→saxaul logit: **LOO AUC = 0.48** (in-sample 0.667), n=56, 6 
 
 ## Validated core: NDMI → soil salinity, suitability = 1 − P(saline)
 - NDMI→P(salts>1%): **LOO AUC = 0.682**, n=70, 27 saline (independent of saxaul labels).
-- Derived suitability vs saxaul labels: **AUC = 0.647** (n=56, 6 positive).
-- Derived suitability vs INDEPENDENT AralField 2018 Haloxylon: **AUC = 0.5** (n=11, 3 present).
+- Derived suitability vs saxaul labels: AUC = 0.647 (n=56, 6 positive). **Consistency check, NOT independent validation:** the saxaul positives are all low-salinity pits and the suitability score is a monotone function of the same salinity target, so this AUC reflects the shared salinity axis, not a separately demonstrated habitat signal.
+- Derived suitability vs INDEPENDENT AralField 2018 Haloxylon: **AUC = 0.5** (n=11, 3 present) — the only genuinely external saxaul check; at ≈0.5 it shows no demonstrated saxaul skill and must not be sold as one.
 
 ## Salinity model coefficients (standardized)
 

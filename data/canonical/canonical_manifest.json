@@ -11,7 +11,7 @@
     "24/14"
   ],
   "n_profiles_in_aoi": 70,
-  "n_soil_layers": 369,
+  "n_soil_layers": 365,
   "n_lab_profiles": 76,
   "n_lab_with_coords": 70,
   "n_lab_without_coords": 6,
@@ -23,6 +23,17 @@
     "15/14",
     "25/14"
   ],
+  "n_profiles_with_soil_type": 76,
+  "soil_class_counts": {
+    "solonchak": 43,
+    "brown_desert": 10,
+    "meadow": 8,
+    "sand": 7,
+    "meadow_bog": 3,
+    "takyr": 3,
+    "primitive_coastal": 2
+  },
+  "n_anthropogenic_profiles": 9,
   "outputs": {
     "profiles": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\data\\canonical\\profiles_v6.csv",
     "soil_layers": "F:\\OPENCODE PROJECTS\\aral-saxaul-ai\\data\\canonical\\soil_layers_v6.csv"

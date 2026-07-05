@@ -9,7 +9,18 @@
     "FN": 2,
     "TN": 4,
     "sensitivity": 0.89,
-    "specificity": 1.0
+    "specificity": 1.0,
+    "sensitivity_n": 19,
+    "specificity_n": 4,
+    "sensitivity_ci95": [
+      0.69,
+      0.97
+    ],
+    "specificity_ci95": [
+      0.51,
+      1.0
+    ],
+    "small_n_caveat": "Point sens/spec on a handful of in-AOI pits; read the Wilson CIs. A specificity of 1.0 on very few negatives is not a validated perfect screen."
   },
   "mean_salt_by_zone": {
     "1": 0.09,

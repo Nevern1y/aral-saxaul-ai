@@ -8,20 +8,20 @@ Wall-to-wall suitability from the **validated salinity model** (NDMI→P(salts>1
 - `outputs/data/suitability_v6_stats.json` — areas + coverage
 
 ## Coverage
-- Restricted to the V5 AOI (1960 Aral footprint): 106,500,271 of 166,208,268 grid px.
+- Restricted to the V5 AOI (1960 Aral footprint): 104,460,677 of 166,208,268 grid px.
 - **93.7% of the AOI is scored** (the 30 m stack is wall-to-wall; vs 54 % NoData on the 10 m S2 composite).
-- Extrapolation: 1.7% of valid pixels have NDMI outside the training support [-0.174, 0.409]; their NDMI is clipped to the support before scoring (no out-of-range extrapolation).
+- Extrapolation: 1.6% of valid pixels have NDMI outside the training support [-0.174, 0.409]; their NDMI is clipped to the support before scoring (no out-of-range extrapolation).
 
 ## Zone breakdown (share of land = non-water)
 | Zone | code | area (ha) | % land |
 |------|------|-----------|--------|
-| Candidate (low salinity) | 1 | 284,903 | 4.5 |
-| Moderate salinity risk | 3 | 501,298 | 7.9 |
-| Strong salinity risk | 4 | 4,135,982 | 65.5 |
-| Existing vegetation | 10 | 1,396,952 | 22.1 |
-| Water / NoData | 0 | 4,181,471 | — |
+| Candidate (low salinity) | 1 | 279,287 | 4.5 |
+| Moderate salinity risk | 3 | 492,877 | 8.0 |
+| Strong salinity risk | 4 | 4,089,335 | 66.2 |
+| Existing vegetation | 10 | 1,311,936 | 21.3 |
+| Water / NoData | 0 | 4,327,171 | — |
 
-Mean suitability over bare land: **0.5858**.
+Mean suitability over bare land: **0.5857**.
 
 ## Ground-truth validation at the 70 measured pits
 Artifacts: `data/canonical/suitability_v6_pit_validation.csv` (per pit), `outputs/data/suitability_v6_pit_validation_summary.json`.
