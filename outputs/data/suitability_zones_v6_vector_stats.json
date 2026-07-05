@@ -3,27 +3,27 @@
   "downsample_factor": 10,
   "approx_resolution_m": 300.0,
   "min_zone_area_ha": 10.0,
-  "zones_kept": 11005,
-  "zones_dropped_small": 12961,
+  "zones_kept": 12651,
+  "zones_dropped_small": 14509,
   "area_ha_by_class": {
     "1": {
-      "area_ha": 217240.9,
-      "count": 1702
+      "area_ha": 221663.0,
+      "count": 1734
     },
     "3": {
-      "area_ha": 274347.4,
-      "count": 3034
+      "area_ha": 371053.1,
+      "count": 3991
     },
     "4": {
-      "area_ha": 3151028.3,
-      "count": 3336
+      "area_ha": 4144344.2,
+      "count": 3680
     },
     "10": {
-      "area_ha": 1659686.2,
-      "count": 2933
+      "area_ha": 1333589.0,
+      "count": 3246
     }
   },
-  "total_area_ha": 5302302.8,
+  "total_area_ha": 6070649.3,
   "class_names": {
     "1": "Candidate (low salinity)",
     "3": "Moderate salinity risk",
