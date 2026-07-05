@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document id="root_doc">
+<Schema name="task_grid_v6_45.51_58.86" id="task_grid_v6_45.51_58.86">
+	<SimpleField name="area_ha" type="float"></SimpleField>
+	<SimpleField name="low_risk_ha" type="float"></SimpleField>
+	<SimpleField name="moderate_risk_ha" type="float"></SimpleField>
+	<SimpleField name="grid_cell_deg" type="string"></SimpleField>
+</Schema>
+<Folder><name>task_grid_v6_45.51_58.86</name>
+  <Placemark id="task_grid_v6_45.51_58.86.1">
+	<name>task_grid_v6_45.51_58.86</name>
+	<name>0</name>
+	<description>236.4</description>
+	<Style><LineStyle><color>ff0000ff</color></LineStyle><PolyStyle><fill>0</fill></PolyStyle></Style>
+	<ExtendedData><SchemaData schemaUrl="#task_grid_v6_45.51_58.86">
+		<SimpleData name="area_ha">236.4</SimpleData>
+		<SimpleData name="low_risk_ha">0.1</SimpleData>
+	</SchemaData></ExtendedData>
+      <MultiGeometry><Polygon><outerBoundaryIs><LinearRing><coordinates>58.8931907007622,45.4691264209937 58.8931907007622,45.4772112585508 58.8904957549098,45.4826011502555 58.8972331195407,45.486643569034 58.8972331195407,45.4758637856246 58.9053179570978,45.4704738939199 58.9080129029502,45.4758637856246 58.9102213862645,45.4736553023102 58.9102213862645,45.4625641451378 58.8969006877486,45.4625641451378 58.9012755383193,45.4691264209937 58.8931907007622,45.4691264209937</coordinates></LinearRing></outerBoundaryIs></Polygon><Polygon><outerBoundaryIs><LinearRing><coordinates>58.9102213862645,45.4763502481626 58.906665430024,45.4799062044031 58.9102213862645,45.4834621606437 58.9102213862645,45.4763502481626</coordinates></LinearRing></outerBoundaryIs></Polygon><Polygon><outerBoundaryIs><LinearRing><coordinates>58.8702836610171,45.4893385148864 58.8716311339433,45.4852960961079 58.8675887151648,45.478558731477 58.8648937693124,45.478558731477 58.8635462963862,45.4826011502555 58.8675887151648,45.4893385148864 58.8702836610171,45.4893385148864</coordinates></LinearRing></outerBoundaryIs></Polygon></MultiGeometry>
+  </Placemark>
+</Folder>
+</Document></kml>

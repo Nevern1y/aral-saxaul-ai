@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document id="root_doc">
+<Schema name="task_grid_v6_45.11_60.96" id="task_grid_v6_45.11_60.96">
+	<SimpleField name="area_ha" type="float"></SimpleField>
+	<SimpleField name="low_risk_ha" type="float"></SimpleField>
+	<SimpleField name="moderate_risk_ha" type="float"></SimpleField>
+	<SimpleField name="grid_cell_deg" type="string"></SimpleField>
+</Schema>
+<Folder><name>task_grid_v6_45.11_60.96</name>
+  <Placemark id="task_grid_v6_45.11_60.96.1">
+	<name>task_grid_v6_45.11_60.96</name>
+	<name>0</name>
+	<description>118.9</description>
+	<Style><LineStyle><color>ff0000ff</color></LineStyle><PolyStyle><fill>0</fill></PolyStyle></Style>
+	<ExtendedData><SchemaData schemaUrl="#task_grid_v6_45.11_60.96">
+		<SimpleData name="area_ha">118.9</SimpleData>
+		<SimpleData name="low_risk_ha">0.1</SimpleData>
+	</SchemaData></ExtendedData>
+      <MultiGeometry><Polygon><outerBoundaryIs><LinearRing><coordinates>60.9992908843804,45.087791582885 61.0102213862645,45.0865770826756 61.0102213862645,45.0862047590685 61.0046807760851,45.0850966370326 61.0019858302328,45.0770117994755 60.996595938528,45.0770117994755 60.9939009926757,45.0743168536232 60.9898585738972,45.0756643265494 60.9898585738972,45.0783592724017 60.9992908843804,45.087791582885</coordinates></LinearRing></outerBoundaryIs></Polygon><Polygon><outerBoundaryIs><LinearRing><coordinates>61.0046807760851,45.1470803916369 61.0046807760851,45.1416904999321 61.0019858302328,45.1443854457845 60.9979434114542,45.1457329187107 61.0046807760851,45.1470803916369</coordinates></LinearRing></outerBoundaryIs></Polygon></MultiGeometry>
+  </Placemark>
+</Folder>
+</Document></kml>

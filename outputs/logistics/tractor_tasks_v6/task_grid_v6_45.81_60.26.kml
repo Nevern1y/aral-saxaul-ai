@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document id="root_doc">
+<Schema name="task_grid_v6_45.81_60.26" id="task_grid_v6_45.81_60.26">
+	<SimpleField name="area_ha" type="float"></SimpleField>
+	<SimpleField name="low_risk_ha" type="float"></SimpleField>
+	<SimpleField name="moderate_risk_ha" type="float"></SimpleField>
+	<SimpleField name="grid_cell_deg" type="string"></SimpleField>
+</Schema>
+<Folder><name>task_grid_v6_45.81_60.26</name>
+  <Placemark id="task_grid_v6_45.81_60.26.1">
+	<name>task_grid_v6_45.81_60.26</name>
+	<name>0</name>
+	<description>83.5</description>
+	<Style><LineStyle><color>ff0000ff</color></LineStyle><PolyStyle><fill>0</fill></PolyStyle></Style>
+	<ExtendedData><SchemaData schemaUrl="#task_grid_v6_45.81_60.26">
+		<SimpleData name="area_ha">83.5</SimpleData>
+		<SimpleData name="low_risk_ha">0.1</SimpleData>
+	</SchemaData></ExtendedData>
+      <MultiGeometry><Polygon><outerBoundaryIs><LinearRing><coordinates>60.2177565871964,45.8262067464312 60.2204515330488,45.8289016922836 60.2204515330488,45.8235118005789 60.2123666954917,45.8235118005789 60.2110192225655,45.8275542193574 60.2150616413441,45.8289016922836 60.2177565871964,45.8262067464312</coordinates></LinearRing></outerBoundaryIs></Polygon><Polygon><outerBoundaryIs><LinearRing><coordinates>60.2102213862645,45.8495127043268 60.2110192225655,45.8491137861763 60.2102213862645,45.8477840590079 60.2102213862645,45.8495127043268</coordinates></LinearRing></outerBoundaryIs></Polygon><Polygon><outerBoundaryIs><LinearRing><coordinates>60.274350450096,45.8625641451378 60.274350450096,45.8558511508072 60.2662656125389,45.8558511508072 60.2649181396127,45.8571986237333 60.2724298695789,45.8625641451378 60.274350450096,45.8625641451378</coordinates></LinearRing></outerBoundaryIs></Polygon><Polygon><outerBoundaryIs><LinearRing><coordinates>60.2190431343719,45.8625641451378 60.2102213862645,45.8590354458948 60.2102213862645,45.8625641451378 60.2190431343719,45.8625641451378</coordinates></LinearRing></outerBoundaryIs></Polygon></MultiGeometry>
+  </Placemark>
+</Folder>
+</Document></kml>

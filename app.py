@@ -15,9 +15,13 @@ os.environ["MPLBACKEND"] = "Agg"
 BASE_DIR = Path(__file__).resolve().parent
 AOI_VECTOR_PATH = BASE_DIR / "outputs" / "aoi" / "aral_sea_1960.geojson"
 
-TASKS_PATH = BASE_DIR / "outputs" / "logistics" / "tasks_index_v5_enriched.csv"
+# V6-first: the field-trip task grid comes from the V6 salinity-risk zones
+# (candidate + moderate risk, Kazakhstan-clipped), regenerated from the current
+# suitability_zones_v6.tif. The V5.1 10 m pipeline stays a frozen backend that only
+# supplies the screening summary numbers via load_screening_stats() below.
+TASKS_PATH = BASE_DIR / "outputs" / "logistics" / "tasks_index_v6_enriched.csv"
 ROADS_PATH = BASE_DIR / "outputs" / "logistics" / "aralkum_roads.geojson"
-KML_TASKS_DIR = BASE_DIR / "outputs" / "logistics" / "tractor_tasks_v5"
+KML_TASKS_DIR = BASE_DIR / "outputs" / "logistics" / "tractor_tasks_v6"
 GRID_STEP = 0.1
 
 # ── Primary V6 map (the 10 m helper pipeline only feeds the KML route files) ──
@@ -196,8 +200,8 @@ with tab_logistics:
     if tasks_df.empty:
         st.warning("Planning data isn't loaded yet. The V6 map still works, but the KML task files can't be listed.")
         render_technical_commands([
-            "python scripts/v5_roads_prep.py",
-            "python scripts/v5_logistics_prep.py",
+            "python scripts/v6/build_v6_vectors.py",
+            "python scripts/v6/v6_logistics_prep.py",
         ])
     else:
         if "territory_scope" in tasks_df.columns and set(tasks_df["territory_scope"].dropna()) == {"kazakhstan"}:
@@ -362,12 +366,20 @@ with tab_logistics:
             )
             st.caption(f"KML route files are stored in `{rel_path(KML_TASKS_DIR)}`.")
             sorted_filtered = filtered.sort_values(distance_col, ascending=True)
-            display_cols = ["filename", "centroid_lat", "centroid_lon", "area_ha", "distance_to_road_km"]
+            has_low_risk = "low_risk_ha" in filtered.columns
+            display_cols = ["filename", "centroid_lat", "centroid_lon", "area_ha"]
+            # V6 tasks carry the low-salinity share per cell; show it so users can
+            # favour cells whose area is mostly candidate (low-risk) land.
+            if has_low_risk:
+                display_cols.append("low_risk_ha")
+            display_cols.append("distance_to_road_km")
             if "distance_to_kazakhstan_road_km" in filtered.columns:
                 display_cols.append("distance_to_kazakhstan_road_km")
             display_df = sorted_filtered[display_cols].copy()
             display_df.columns = [
-                "KML file", "Latitude", "Longitude", "Area (ha)", "Distance to any road (km)",
+                "KML file", "Latitude", "Longitude", "Area (ha)",
+                *(["Low-salinity area (ha)"] if has_low_risk else []),
+                "Distance to any road (km)",
                 *(["Distance to KZ road (km)"] if "distance_to_kazakhstan_road_km" in filtered.columns else []),
             ]
             st.dataframe(
@@ -564,7 +576,9 @@ with tab_dev:
     st.subheader("How far to trust this map")
     st.info(
         "This tab shows how the map was checked and where its limits are. The headline result is the V6 "
-        "salinity risk score; a separate 10 m screening pipeline supplies the KML site contours and road distances."
+        "salinity risk score; the field-trip task grid and its KML files are derived from the same V6 zones "
+        "(candidate + moderate risk, Kazakhstan-clipped). A separate frozen 10 m pipeline only supplies the "
+        "screening summary numbers."
     )
     safety_rows = [
         {
@@ -796,9 +810,21 @@ with tab_dev:
             cc1, cc2 = st.columns(2)
             cc1.metric("Points covered by V6", f"{pv.get('v6_scored_nonwater', '—')}/70",
                        help="Ground-truth points (excluding water) that land inside scored zones.")
+            sens_ci = det.get("sensitivity_ci95")
+            spec_ci = det.get("specificity_ci95")
+            spec_n = det.get("specificity_n")
+            sens_n = det.get("sensitivity_n")
             cc2.metric("Salinity detector",
                        f"sensitivity {det.get('sensitivity', '—')} / specificity {det.get('specificity', '—')}",
-                       help="How well zones 3/4 flag points with salinity above 1%.")
+                       help="How well zones 3/4 flag points with salinity above 1%. "
+                            "Read with the sample sizes and 95% intervals below — a specificity of 1.0 "
+                            "on a handful of negatives is not a validated perfect screen.")
+            if spec_ci and sens_ci:
+                st.caption(
+                    f"Sensitivity {det.get('sensitivity','—')} on n={sens_n} (95% CI "
+                    f"[{sens_ci[0]}, {sens_ci[1]}]); specificity {det.get('specificity','—')} on only "
+                    f"n={spec_n} negatives (95% CI [{spec_ci[0]}, {spec_ci[1]}] — wide, small sample)."
+                )
             n_in = aoi_split.get("n_in")
             n_out = aoi_split.get("n_out")
             st.caption(
