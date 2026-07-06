@@ -1,4 +1,5 @@
 import json
+import math
 import os
 import zipfile
 from io import BytesIO
@@ -230,26 +231,44 @@ with tab_logistics:
             distance_col = access_options[selected_access]
 
         with col_f1:
-            max_dist = float(tasks_df[distance_col].max())
+            # Fixed, human-friendly road-access rungs (km) for planning field routes.
+            # A rung is only offered when at least one site sits beyond it: a threshold
+            # >= the farthest site would pass every cell and make the control a no-op —
+            # exactly the old 120/250 km bug (V6 sites top out at ~73 km from a road).
+            # This keeps round numbers while staying immune to data-range drift.
+            dist_series = tasks_df[distance_col].dropna()
+            max_dist = float(dist_series.max()) if not dist_series.empty else 0.0
+
+            FIXED_ROAD_RUNGS_KM = [10, 25, 50, 100, 150, 250]
             road_scenarios = {
-                "Close to roads (up to 120 km)": 120.0,
-                "Far visits (up to 250 km from roads)": 250.0,
-                "Show full coverage": max_dist,
+                f"Within {rung} km of a road": float(rung)
+                for rung in FIXED_ROAD_RUNGS_KM
+                if rung < max_dist
             }
+            road_scenarios[f"Show full coverage (up to {max_dist:.0f} km)"] = max_dist
+
             selected_road_scen = st.selectbox(
                 "Road access:",
                 options=list(road_scenarios.keys()),
                 index=0,
-                help="Start close to roads — you can check the model against real ground without mounting a full expedition.",
+                help=(
+                    "Fixed distance rungs for planning field routes. Only rungs that actually "
+                    "narrow the current site index are listed; anything farther collapses into "
+                    "\"Show full coverage\"."
+                ),
             )
             dist_thresh = road_scenarios[selected_road_scen]
 
         with col_f2:
+            # Use math.ceil for the open-ended upper bounds: int() truncates the largest
+            # cell's area (e.g. 6591.3 -> 6591) and would silently drop that cell from the
+            # "Very large" and "All sizes" buckets.
+            area_cap = math.ceil(max_cell_ha)
             area_scenarios = {
                 "Small sites (10-1,000 ha)": (10, 1000),
                 "Large sites (1,000-5,000 ha)": (1000, 5000),
-                "Very large sites (>5,000 ha)": (5000, int(max_cell_ha)),
-                "All sizes": (0, int(max_cell_ha)),
+                "Very large sites (>5,000 ha)": (5000, area_cap),
+                "All sizes": (0, area_cap),
             }
             selected_area_scen = st.selectbox(
                 "Site size:",
