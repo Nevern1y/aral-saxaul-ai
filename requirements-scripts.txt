@@ -1,0 +1,16 @@
+# Heavy dependencies for the V6/V5 pipeline scripts under scripts/ and src/
+# (NOT installed on Streamlit Cloud — keep out of requirements.txt, which the
+# dashboard deploy reads). Install locally when running the pipeline with:
+#   pip install -r requirements.txt -r requirements-scripts.txt
+#
+# Provenance (import scan of scripts/ + src/, 2026-07):
+#   earthengine-api  -> `import ee`  (38 references, 2 files)
+#   rasterio         -> raster I/O   (16 files)
+#   scipy            -> stats/interp (8 files)
+#   numpy            -> arrays       (24 files; also a transitive dep of pandas)
+#   requests         -> data fetch   (2 files)
+earthengine-api>=1.5
+numpy>=2.0
+rasterio>=1.4
+requests>=2.32
+scipy>=1.14

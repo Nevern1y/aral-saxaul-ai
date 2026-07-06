@@ -1,12 +1,13 @@
-earthengine-api>=1.5
+# Runtime dependencies for the Streamlit dashboard (app.py) ONLY.
+# app.py imports: streamlit, pandas, folium, shapely, and geopandas (lazy, in
+# load_roads()). numpy is pulled in transitively by pandas/geopandas.
+#
+# Heavy pipeline-only libs (rasterio, earthengine-api, scipy) and the fully
+# unused matplotlib/plotly were removed from this file so Streamlit Community
+# Cloud stops building GDAL/Earth Engine wheels it never imports at runtime.
+# Those live in requirements-scripts.txt for local pipeline work.
 folium>=0.19
 geopandas>=1.0
-matplotlib>=3.9
-numpy>=2.0
 pandas>=2.2
-plotly>=5.24
-rasterio>=1.4
-requests>=2.32
-scipy>=1.14
 shapely>=2.0
 streamlit>=1.57

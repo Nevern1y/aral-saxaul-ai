@@ -128,6 +128,16 @@ On this workstation, use system Python 3.12:
 - Keep `geopandas` guarded in `app.py` (`rasterio` is no longer imported there).
   The dashboard must degrade gracefully when local GIS wheels or generated
   outputs are absent.
+- Dependency split: `requirements.txt` is the **dashboard runtime** deploy file
+  read by Streamlit Cloud — keep it to what `app.py` imports (streamlit, pandas,
+  folium, shapely, geopandas). Heavy pipeline-only libs (rasterio,
+  earthengine-api, scipy, numpy, requests) live in `requirements-scripts.txt`;
+  dev/test tooling in `requirements-dev.txt`. Do not add pipeline or unused libs
+  (matplotlib/plotly) back to `requirements.txt` — they only slow/break the
+  GDAL/EE wheel build on Cloud.
+- Python version on Streamlit Community Cloud is set via the deploy **Advanced
+  settings** (or delete+redeploy), not `runtime.txt` — that file is currently
+  ignored by the Cloud build. Target Python 3.12 to match local wheels.
 - The V6 map HTML places the layers control top-left (collapsed), the legend
   bottom-left, and the decision panel top-right — three fixed corners, no
   overlap. Keep new map furniture out of the top-right corner.
