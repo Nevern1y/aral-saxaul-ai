@@ -113,13 +113,13 @@ def test_v6_map_html_self_contained() -> None:
     txt = p.read_text(encoding="utf-8")
     assert "data:image/png;base64" in txt, "V6 map must embed image as base64 (not a file path)"
     assert "leaflet" in txt.lower(), "V6 map must be a Leaflet/Folium map"
-    assert "What the selected spot shows" in txt, "V6 map must explain hovered locations"
-    assert "Low-salinity-risk score" in txt, "V6 map must show a human-readable low-salt score"
-    assert "Estimated salinity risk" in txt, "V6 map must translate score into salinity risk"
+    assert "Что показывает выбранная точка" in txt, "V6 map must explain hovered locations"
+    assert "Оценка низкого риска засоления" in txt, "V6 map must show a human-readable low-salt score"
+    assert "Примерный риск засоления" in txt, "V6 map must translate score into salinity risk"
     assert "map.on('mousemove'" in txt, "V6 map must keep hover/click decision panel"
     assert "map.on('click'" in txt, "V6 map must update decision panel on click"
-    assert "V6 salinity risk zones" in txt
-    assert "V6 score: higher = lower salinity risk (0..1)" in txt
+    assert "Зоны риска засоления V6" in txt
+    assert "Оценка V6: выше значит меньше риск засоления (0..1)" in txt
 
 
 def test_v6_calibrated_thresholds_omit_10m() -> None:

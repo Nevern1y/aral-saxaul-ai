@@ -37,9 +37,9 @@ V6_SPATIAL_PATH = BASE_DIR / "outputs" / "data" / "spatial_validation_v6.json"
 V6_BENCHMARK_PATH = CANON_DIR / "model_v6_benchmark.json"
 V6_PIT_TABLE_PATH = CANON_DIR / "suitability_v6_pit_validation.csv"
 
-st.set_page_config(page_title="Aral Saxaul: Phytomelioration Platform", layout="wide")
+st.set_page_config(page_title="Aral Saxaul: карта риска засоления", layout="wide")
 if not hasattr(st, "iframe"):
-    st.error("This dashboard needs Streamlit 1.57 or newer to show interactive maps.")
+    st.error("Для интерактивных карт нужен Streamlit 1.57 или новее.")
     st.stop()
 
 # UI/UX: limit the dashboard width for comfortable reading on wide screens
@@ -161,26 +161,30 @@ def fmt_metric(value, digits=3):
     return f"{float(value):.{digits}f}" if value is not None else "—"
 
 
+def fmt_int(value):
+    return f"{float(value):,.0f}".replace(",", " ")
+
+
 def render_technical_commands(commands):
-    with st.expander("For technical users"):
+    with st.expander("Для технических пользователей"):
         for command in commands:
             st.code(command, language="bash")
 
 
-st.title("Aral Saxaul: a salinity screening map for planting surveys")
+st.title("Aral Saxaul: карта риска засоления для полевых обследований")
 st.markdown(
     '<p style="font-size:0.9rem; color:#6c757d;">'
-    "This map points you to the ground worth checking in person. It estimates how salty the soil "
-    "is likely to be and suggests a next step for any site you pick — it does not replace a soil "
-    "sample, and it does not make planting decisions."
+    "Карта помогает выбрать участки, которые стоит проверить на месте. Она оценивает вероятный "
+    "риск засоления, показывает следующий шаг для выбранной точки и не заменяет анализ почвы. "
+    "Решение о посадке принимают только после полевого обследования."
     "</p>",
     unsafe_allow_html=True,
 )
 
 tab_analytics, tab_dev, tab_logistics = st.tabs([
-    "Map and summary",
-    "How it was checked",
-    "Plan a field trip",
+    "Карта и сводка",
+    "Как проверяли модель",
+    "План полевых работ",
 ])
 
 # ══════════════════════════════════════════════════════════════════════
@@ -188,25 +192,25 @@ tab_analytics, tab_dev, tab_logistics = st.tabs([
 # ══════════════════════════════════════════════════════════════════════
 
 with tab_logistics:
-    st.subheader("Plan a field trip")
+    st.subheader("План полевых работ")
     st.info(
-        "The workflow: pick sites you can actually reach by road, download their KML files, "
-        "then go check the soil and coordinates on the ground. Planting and budget planning "
-        "come only after that."
+        "Порядок простой: выберите участки, до которых реально доехать, скачайте KML-файлы, "
+        "затем проверьте координаты и почву на месте. Посадки и бюджет имеет смысл обсуждать "
+        "только после этого."
     )
     tasks_df = load_tasks()
     roads_gdf = load_roads()
     screening_stats = load_screening_stats()
 
     if tasks_df.empty:
-        st.warning("Planning data isn't loaded yet. The V6 map still works, but the KML task files can't be listed.")
+        st.warning("Данные для планирования пока не загружены. Карта V6 работает, но список KML-файлов недоступен.")
         render_technical_commands([
             "python scripts/v6/build_v6_vectors.py",
             "python scripts/v6/v6_logistics_prep.py",
         ])
     else:
         if "territory_scope" in tasks_df.columns and set(tasks_df["territory_scope"].dropna()) == {"kazakhstan"}:
-            st.caption("Everything below covers sites inside Kazakhstan only.")
+            st.caption("Ниже показаны только участки в пределах Казахстана.")
 
         tasks_df["distance_to_road_km"] = pd.to_numeric(tasks_df["distance_to_road_km"], errors="coerce")
         if "distance_to_kazakhstan_road_km" in tasks_df.columns:
@@ -214,19 +218,19 @@ with tab_logistics:
                 tasks_df["distance_to_kazakhstan_road_km"],
                 errors="coerce",
             )
-        access_options = {"Any OSM road": "distance_to_road_km"}
+        access_options = {"Все дороги OSM": "distance_to_road_km"}
         if "distance_to_kazakhstan_road_km" in tasks_df.columns and tasks_df["distance_to_kazakhstan_road_km"].notna().any():
-            access_options["Kazakhstan road access"] = "distance_to_kazakhstan_road_km"
+            access_options["Дороги Казахстана"] = "distance_to_kazakhstan_road_km"
 
         max_cell_ha = float(tasks_df["area_ha"].max())
 
         col_f0, col_f1, col_f2 = st.columns(3)
         with col_f0:
             selected_access = st.selectbox(
-                "Measure road access from:",
+                "От какой дорожной сети считать расстояние:",
                 options=list(access_options.keys()),
-                index=1 if "Kazakhstan road access" in access_options else 0,
-                help="For a first trip, measuring from the Kazakhstan road network usually makes more sense, when that layer is available.",
+                index=1 if "Дороги Казахстана" in access_options else 0,
+                help="Для первой поездки обычно полезнее считать расстояние от дорог Казахстана, если этот слой доступен.",
             )
             distance_col = access_options[selected_access]
 
@@ -241,20 +245,19 @@ with tab_logistics:
 
             FIXED_ROAD_RUNGS_KM = [10, 25, 50, 100, 150, 250]
             road_scenarios = {
-                f"Within {rung} km of a road": float(rung)
+                f"До {rung} км от дороги": float(rung)
                 for rung in FIXED_ROAD_RUNGS_KM
                 if rung < max_dist
             }
-            road_scenarios[f"Show full coverage (up to {max_dist:.0f} km)"] = max_dist
+            road_scenarios[f"Показать все участки (до {max_dist:.0f} км)"] = max_dist
 
             selected_road_scen = st.selectbox(
-                "Road access:",
+                "Доступность по дорогам:",
                 options=list(road_scenarios.keys()),
                 index=0,
                 help=(
-                    "Fixed distance rungs for planning field routes. Only rungs that actually "
-                    "narrow the current site index are listed; anything farther collapses into "
-                    "\"Show full coverage\"."
+                    "Показываем только такие пороги расстояния, которые реально сужают текущий "
+                    "список участков. Более дальние значения объединены в \"Показать все участки\"."
                 ),
             )
             dist_thresh = road_scenarios[selected_road_scen]
@@ -265,16 +268,16 @@ with tab_logistics:
             # "Very large" and "All sizes" buckets.
             area_cap = math.ceil(max_cell_ha)
             area_scenarios = {
-                "Small sites (10-1,000 ha)": (10, 1000),
-                "Large sites (1,000-5,000 ha)": (1000, 5000),
-                "Very large sites (>5,000 ha)": (5000, area_cap),
-                "All sizes": (0, area_cap),
+                "Небольшие участки (10-1 000 га)": (10, 1000),
+                "Крупные участки (1 000-5 000 га)": (1000, 5000),
+                "Очень крупные участки (>5 000 га)": (5000, area_cap),
+                "Все размеры": (0, area_cap),
             }
             selected_area_scen = st.selectbox(
-                "Site size:",
+                "Размер участка:",
                 options=list(area_scenarios.keys()),
                 index=0,
-                help="Small and medium sites make the easiest first checks — less risk, less driving, simpler sampling.",
+                help="Для первой проверки проще брать небольшие и средние участки: меньше риска, меньше переездов, проще отбор проб.",
             )
             min_area, max_area = area_scenarios[selected_area_scen]
 
@@ -288,21 +291,21 @@ with tab_logistics:
         total_task_area_ha = float(tasks_df["area_ha"].sum()) if not tasks_df.empty else 0.0
         col_m1, col_m2, col_m3, col_m4 = st.columns(4)
         col_m1.metric(
-            "Area of selected sites",
-            f"{selected_area_ha:,.0f} ha",
-            help="Total area of the cells passing your current filters. Until someone checks these sites on the ground, this number is not a planting plan.",
+            "Площадь выбранных участков",
+            f"{fmt_int(selected_area_ha)} га",
+            help="Суммарная площадь ячеек, прошедших текущие фильтры. Пока участки не проверены на месте, это не план посадок.",
         )
-        col_m2.metric("Cells selected", f"{len(filtered):,}")
-        col_m3.metric("Total in index", f"{len(tasks_df):,}")
+        col_m2.metric("Выбрано участков", f"{len(filtered):,}".replace(",", " "))
+        col_m3.metric("Всего в индексе", f"{len(tasks_df):,}".replace(",", " "))
         col_m4.metric(
-            "Share of index area",
+            "Доля площади индекса",
             f"{selected_area_ha / total_task_area_ha * 100:.1f}%" if total_task_area_ha else "0%",
         )
         if screening_stats:
             full_aoi_ha = screening_stats.get("candidate_100m_area_ha", screening_stats.get("area_ha", 0))
             st.caption(
-                f"For scale: across the whole study area, the screening estimates {full_aoi_ha:,.0f} ha of candidate zone. "
-                "The filter above only touches the KML site index used for field trips."
+                f"Для масштаба: по всей исследуемой области предварительный отбор выделяет {fmt_int(full_aoi_ha)} га перспективной зоны. "
+                "Фильтры выше работают только с KML-индексом для полевых выездов."
             )
 
         m = folium.Map(
@@ -315,7 +318,7 @@ with tab_logistics:
         if roads_gdf is not None and not roads_gdf.empty:
             folium.GeoJson(
                 roads_gdf,
-                name="Roads (OSM)",
+                name="Дороги (OSM)",
                 style_function=lambda f: {
                     "color": "#8B4513", "weight": 1.0, "opacity": 0.6,
                 },
@@ -345,14 +348,14 @@ with tab_logistics:
             task_fc = {"type": "FeatureCollection", "features": task_features}
             folium.GeoJson(
                 task_fc,
-                name="Sites to check",
+                name="Участки для проверки",
                 style_function=lambda f: {
                     "fillColor": "#2ecc40", "color": "#27ae60",
                     "weight": 1.0, "fillOpacity": 0.3,
                 },
                 tooltip=folium.GeoJsonTooltip(
                     fields=["filename", "area_ha", "dist_km", "dist_kz_km"],
-                    aliases=["File:", "Area (ha):", "To selected road (km):", "To KZ road (km):"],
+                    aliases=["Файл:", "Площадь (га):", "До выбранной дороги (км):", "До дороги KZ (км):"],
                     localize=True,
                 ),
                 highlight_function=lambda f: {"weight": 2.0, "color": "#007bff"},
@@ -364,7 +367,7 @@ with tab_logistics:
                     location=[row["centroid_lat"], row["centroid_lon"]],
                     popup=(
                         f"{row['filename']}<br>"
-                        f"{row['area_ha']:.0f} ha, {row[distance_col]:.2f} km"
+                        f"{row['area_ha']:.0f} га, {row[distance_col]:.2f} км"
                     ),
                     icon=folium.Icon(color="green", icon="ok-sign", prefix="glyphicon"),
                 ).add_to(m)
@@ -374,16 +377,16 @@ with tab_logistics:
         plugins.MousePosition().add_to(m)
 
         st.caption(
-            "Green squares pass your filters. The five pins mark the sites closest to a road — natural first stops."
+            "Зелёные квадраты прошли ваши фильтры. Пять маркеров показывают ближайшие к дороге участки — с них удобно начинать."
         )
         _render_map(m.get_root().render())
 
-        with st.expander("KML route files", expanded=True):
+        with st.expander("KML-файлы маршрутов", expanded=True):
             st.caption(
-                "These KML files open in a GPS unit, Google Earth, or QGIS. Start with the nearest sites — "
-                "and hold off on any planting decision until the soil has been checked."
+                "Эти KML-файлы можно открыть в GPS-навигаторе, Google Earth или QGIS. Начинайте с ближайших участков "
+                "и не планируйте посадку, пока почва не проверена."
             )
-            st.caption(f"KML route files are stored in `{rel_path(KML_TASKS_DIR)}`.")
+            st.caption(f"KML-файлы маршрутов лежат в `{rel_path(KML_TASKS_DIR)}`.")
             sorted_filtered = filtered.sort_values(distance_col, ascending=True)
             has_low_risk = "low_risk_ha" in filtered.columns
             display_cols = ["filename", "centroid_lat", "centroid_lon", "area_ha"]
@@ -396,10 +399,10 @@ with tab_logistics:
                 display_cols.append("distance_to_kazakhstan_road_km")
             display_df = sorted_filtered[display_cols].copy()
             display_df.columns = [
-                "KML file", "Latitude", "Longitude", "Area (ha)",
-                *(["Low-salinity area (ha)"] if has_low_risk else []),
-                "Distance to any road (km)",
-                *(["Distance to KZ road (km)"] if "distance_to_kazakhstan_road_km" in filtered.columns else []),
+                "KML-файл", "Широта", "Долгота", "Площадь (га)",
+                *(["Площадь с низким риском засоления (га)"] if has_low_risk else []),
+                "До любой дороги (км)",
+                *(["До дороги Казахстана (км)"] if "distance_to_kazakhstan_road_km" in filtered.columns else []),
             ]
             st.dataframe(
                 display_df,
@@ -409,34 +412,34 @@ with tab_logistics:
             kml_bytes = zip_kml_files(sorted_filtered["filename"].head(25)) if not filtered.empty else b""
             if kml_bytes:
                 st.download_button(
-                    "Download the 25 nearest sites (KML)",
+                    "Скачать 25 ближайших участков (KML)",
                     data=kml_bytes,
                     file_name="aral_saxaul_field_tasks_top25.kml.zip",
                     mime="application/zip",
-                    help="Sorted the same way as the table: by distance to the selected road.",
+                    help="Порядок такой же, как в таблице: по расстоянию до выбранной дороги.",
                 )
             elif not filtered.empty:
-                st.info(f"No KML files found in `{rel_path(KML_TASKS_DIR)}`.")
+                st.info(f"KML-файлы не найдены в `{rel_path(KML_TASKS_DIR)}`.")
 
         st.warning(
-            "The estimate below shows rough scale, nothing more. Confirm the sites in the field before treating it as a plan."
+            "Расчёт ниже показывает только грубый масштаб. Сначала подтвердите участки в поле, потом используйте цифры для планирования."
         )
-        with st.expander("Rough resource estimate (for confirmed sites)", expanded=False):
+        with st.expander("Черновой расчёт ресурсов (для подтверждённых участков)", expanded=False):
             st.caption(
-                "A back-of-the-envelope calculation of what planting this much area would take. "
-                "It becomes meaningful only once the sites are confirmed on the ground."
+                "Прикидка того, сколько ресурсов потребует посадка на такой площади. "
+                "Смысл у неё появляется только после проверки участков на месте."
             )
             if selected_area_ha > 0:
                 density = st.slider(
-                    "Planting density (seedlings/ha)",
+                    "Плотность посадки (саженцев/га)",
                     min_value=1000, max_value=3000, value=1500, step=100,
                 )
                 productivity = st.slider(
-                    "Tractor output (ha/shift)",
+                    "Производительность трактора (га/смену)",
                     min_value=5, max_value=20, value=10, step=1,
                 )
                 fuel_rate = st.slider(
-                    "Diesel use (L/ha)",
+                    "Расход дизеля (л/га)",
                     min_value=10.0, max_value=30.0, value=15.0, step=0.5,
                 )
                 total_saplings = int(selected_area_ha * density)
@@ -444,12 +447,12 @@ with tab_logistics:
                 total_machine_shifts = selected_area_ha / productivity
 
                 col_r1, col_r2, col_r3 = st.columns(3)
-                col_r1.metric("Area in the current filter", f"{selected_area_ha:,.0f} ha")
-                col_r2.metric("Seedlings", f"{total_saplings:,}")
-                col_r3.metric("Machine-shifts", f"{total_machine_shifts:,.0f}")
-                st.metric("Diesel, approximate", f"{total_fuel:,.0f} L")
+                col_r1.metric("Площадь в текущем фильтре", f"{fmt_int(selected_area_ha)} га")
+                col_r2.metric("Саженцы", f"{total_saplings:,}".replace(",", " "))
+                col_r3.metric("Машино-смены", fmt_int(total_machine_shifts))
+                st.metric("Дизель, примерно", f"{fmt_int(total_fuel)} л")
             else:
-                st.info("No sites match the current filters.")
+                st.info("Под текущие фильтры не подходит ни один участок.")
 
 # ══════════════════════════════════════════════════════════════════════
 # TAB 2: 📊 Overall statistics
@@ -471,120 +474,119 @@ with tab_analytics:
 
     col1, col2, col3, col4 = st.columns(4)
     col1.metric(
-        "Low salinity risk (V6)",
-        f"{v6_low_salt_ha:,.0f} ha" if v6_low_salt_ha else "—",
-        help="Ground the model flags as least salty. Candidates for a field check — not a ready planting area.",
+        "Низкий риск засоления (V6)",
+        f"{fmt_int(v6_low_salt_ha)} га" if v6_low_salt_ha else "—",
+        help="Территории, где модель видит наименьший риск засоления. Это кандидаты для проверки, а не готовая площадь под посадку.",
     )
     col2.metric(
-        "Scored by V6",
-        f"{v6_coverage * 100:.0f}% AOI" if v6_coverage is not None else "—",
-        help="How much of the study area the model could actually score.",
+        "Оценено моделью V6",
+        f"{v6_coverage * 100:.0f}% области" if v6_coverage is not None else "—",
+        help="Какая часть исследуемой территории получила оценку модели.",
     )
     col3.metric(
-        "Model validation",
+        "Проверка модели",
         fmt_metric(v6_metrics.get("auc")),
-        delta=f"CI {v6_ci[0]:.3f}-{v6_ci[1]:.3f}" if v6_ci else None,
-        help="LOO AUC: how well the model separates saline soil profiles from non-saline ones.",
+        delta=f"ДИ {v6_ci[0]:.3f}-{v6_ci[1]:.3f}" if v6_ci else None,
+        help="LOO AUC: насколько хорошо модель отличает засолённые почвенные профили от незасолённых.",
     )
     col4.metric(
-        "KML site contours",
-        f"{screening_stats.get('clusters', 0):,}",
-        help="Ready-made site contours used to organize field trips (see the Plan a field trip tab).",
+        "KML-контуры участков",
+        f"{screening_stats.get('clusters', 0):,}".replace(",", " "),
+        help="Готовые контуры участков для организации полевых выездов. Они находятся во вкладке планирования.",
     )
 
     # ── Map in the most visible spot ───────────────────────────────────
-    st.markdown("### V6 salinity risk map")
+    st.markdown("### Карта риска засоления V6")
     if V6_MAP_PATH.exists():
         _render_map(V6_MAP_PATH.read_text(encoding="utf-8"))
         auc_txt = fmt_metric(v6_metrics["auc"])
         ci = v6_metrics.get("ci")
-        ci_txt = f", 95% CI {ci[0]:.3f}-{ci[1]:.3f}" if ci else ""
+        ci_txt = f", 95% ДИ {ci[0]:.3f}-{ci[1]:.3f}" if ci else ""
         n_txt = v6_metrics.get("n") or 70
         st.info(
-            "Hover over or click any colored site. The panel on the map gives a 0-100 score, "
-            "the estimated salinity risk, and a practical next step. Green means \"check this one first\" — "
-            "it is not an approval to plant."
+            "Наведите курсор на окрашенный участок или щёлкните по нему. Панель на карте покажет оценку от 0 до 100, "
+            "примерный риск засоления и следующий шаг. Зелёный цвет значит: этот участок стоит проверить раньше других. "
+            "Это не разрешение на посадку."
         )
-        with st.expander("Why this map is a screening tool, not a verdict"):
+        with st.expander("Почему это предварительный отбор, а не окончательный вывод"):
             st.markdown(
-                f"V6 learned from {n_txt} soil profiles with lab-measured salt content, and salt is "
-                f"the only thing it screens for (LOO AUC {auc_txt}{ci_txt}). It knows nothing about "
-                "saxaul survival rates, groundwater depth, or what the ground looks like today. "
-                "A field visit and a soil sample come before any final decision."
+                f"V6 обучена на {n_txt} почвенных профилях с лабораторным анализом солей. "
+                f"Она оценивает только риск засоления (LOO AUC {auc_txt}{ci_txt}). "
+                "Модель не знает, как здесь приживётся саксаул, как глубоко лежат грунтовые воды "
+                "и как участок выглядит сейчас. Перед решением нужен выезд и проба почвы."
             )
     else:
-        st.info(f"V6 map not found ({V6_MAP_PATH.name}).")
+        st.info(f"Карта V6 не найдена ({V6_MAP_PATH.name}).")
         render_technical_commands([
             "python scripts/v6/build_suitability_index.py",
             "python scripts/v6/render_v6_map.py",
         ])
 
-    st.markdown("### Reading the map")
+    st.markdown("### Как читать карту")
     action_rows = [
         {
-            "If the map shows": "High score, low salinity risk",
-            "What it means": "Move this site up the field-check list.",
-            "Next step": "Check road access, open the KML file, take a soil sample.",
+            "Что показывает карта": "Высокая оценка, низкий риск засоления",
+            "Что это значит": "Поставьте участок выше в списке полевой проверки.",
+            "Следующий шаг": "Проверьте подъезд, откройте KML-файл, отберите пробу почвы.",
         },
         {
-            "If the map shows": "Medium score",
-            "What it means": "Not ruled out, but the salt risk is real.",
-            "Next step": "Visit after the best sites, or keep it as a control point.",
+            "Что показывает карта": "Средняя оценка",
+            "Что это значит": "Участок не стоит исключать, но риск засоления заметный.",
+            "Следующий шаг": "Езжайте сюда после лучших участков или оставьте как контрольную точку.",
         },
         {
-            "If the map shows": "High salinity risk, or vegetation already growing",
-            "What it means": "A weak candidate for new planting, unless something else makes it interesting.",
-            "Next step": "Usually skip it, or survey it separately.",
+            "Что показывает карта": "Высокий риск засоления или уже есть растительность",
+            "Что это значит": "Для новых посадок участок слабый, если нет другой причины его изучать.",
+            "Следующий шаг": "Обычно его пропускают или обследуют отдельно.",
         },
     ]
     st.dataframe(pd.DataFrame(action_rows), hide_index=True, width="stretch")
 
     if operational_area_ha:
         st.caption(
-            f"The ready field-visit contours (10 ha and larger) add up to {operational_area_ha:,.0f} ha. "
-            "Their KML files and road distances live in the Plan a field trip tab."
+            f"Готовые контуры для полевых выездов площадью от 10 га суммарно дают {fmt_int(operational_area_ha)} га. "
+            "KML-файлы и расстояния до дорог находятся во вкладке планирования."
         )
 
-    st.markdown("### The honest summary")
+    st.markdown("### Коротко и честно")
     conclusion_rows = [
         {
-            "Question": "What this map shows",
-            "Current answer": "Salinity risk, from a lab-verified link between a satellite moisture index and measured salt",
-            "How to read it": "It tells you where to look. It doesn't promise that planting there will work.",
+            "Вопрос": "Что показывает карта",
+            "Ответ": "Риск засоления, рассчитанный по связи между спутниковым индексом влажности и измеренными солями",
+            "Как использовать": "Карта подсказывает, куда ехать. Она не обещает, что посадка сработает.",
         },
         {
-            "Question": "Where to start",
-            "Current answer": f"{v6_low_salt_ha:,.0f} ha in the V6 low-salinity-risk zone" if v6_low_salt_ha else "V6 statistics are not available",
-            "How to read it": "The top of the field-check list — not a planting area.",
+            "Вопрос": "С чего начать",
+            "Ответ": f"{fmt_int(v6_low_salt_ha)} га в зоне V6 с низким риском засоления" if v6_low_salt_ha else "Статистика V6 недоступна",
+            "Как использовать": "Это верх списка для проверки в поле, а не площадь под посадку.",
         },
         {
-            "Question": "Sites for field visits",
-            "Current answer": f"{screening_stats.get('clusters', 0):,} ready site contours (10 ha and up) with KML files",
-            "How to read it": "Cross-check against the map, then confirm with a soil check on the ground.",
+            "Вопрос": "Участки для выезда",
+            "Ответ": f"{screening_stats.get('clusters', 0):,}".replace(",", " ") + " готовых контуров от 10 га с KML-файлами",
+            "Как использовать": "Сверьте их с картой, затем подтвердите почвой на месте.",
         },
         {
-            "Question": "Main limitation",
-            "Current answer": "The model sees salt. It doesn't see saxaul survival or every local condition",
-            "How to read it": "Compare sites within one district, and let the field sample have the last word.",
+            "Вопрос": "Главное ограничение",
+            "Ответ": "Модель видит риск засоления. Она не видит приживаемость саксаула и все местные условия",
+            "Как использовать": "Сравнивайте участки внутри одного района, а последнее слово оставляйте за полевой пробой.",
         },
     ]
     st.dataframe(pd.DataFrame(conclusion_rows), hide_index=True, width="stretch")
 
-    st.markdown("### Salt flats and saxaul: what the evidence says")
+    st.markdown("### Солончаки и саксаул: что видно по данным")
     st.markdown(
         """
-        Some patches of the dried Aral seabed are what soil scientists call solonchaks. This is ground where salt has built up at or near the surface, often visible as a whitish crust. These flats formed naturally as the old sea or lake bed dried out and left mineral salts behind. Some of them are almost bare of any plants at all.
+        На части высохшего дна Аральского моря встречаются солончаки. Это почвы, где соли накопились у поверхности, иногда в виде светлой корки. Они появились естественно: вода ушла, а минеральные соли остались в верхних горизонтах. Многие такие места почти голые.
 
-        Salt is hard on plant roots, and saxaul is no exception. It is one of the toughest, most salt-tolerant shrubs available for this landscape, but even it struggles on the most heavily salted ground. The project's field records include a former salt lake bed, logged as very saline, where no saxaul was found, and one planting attempt on similarly salty ground that failed to establish. Two other failed plantings in the records sit on bare or ploughed ground; the field notes there point to disturbance and lack of vegetation, not measured salt, as the likely reason. At least one site with healthy saxaul also had other salt-tolerant shrubs and salt-marsh plants growing right alongside it, so saxaul and salty ground are not mutually exclusive. Across the whole project, only six pits have a confirmed saxaul presence record, so this pattern is a hint worth checking in the field, not a proven rule.
+        Соль мешает корням, и саксаул здесь не исключение. Он выносливее многих растений Приаралья, но на сильно засолённой земле тоже приживается хуже. В полевых данных проекта есть бывшее солёное озеро, где саксаула не нашли, и есть неудачная посадка на участке с похожими условиями. Ещё две неудачные посадки были на голой или распаханной земле; по полевым заметкам там, скорее всего, сработали нарушение почвы и отсутствие растительности, а не измеренная соль. Есть и обратный пример: на одном участке живой саксаул рос рядом с другими солеустойчивыми кустарниками и галофитами. Значит, соль снижает шансы, но не ставит абсолютный запрет. Подтверждённых точек с саксаулом в проекте всего шесть, поэтому это подсказка для проверки, а не доказанное правило.
 
-        Put simply: high salt content makes it much less likely that saxaul will take root without treatment. It does not rule saxaul out everywhere. Treat salinity as a screening flag, not a hard line. The dashboard's map flags zones with higher or lower salinity risk, using satellite and soil data. Use it to decide which sites to visit first, and check the salt on the ground before committing to plant.
+        Проще сказать так: высокая засолённость резко снижает шанс, что саксаул укоренится без подготовки почвы. Но она не означает, что саксаул невозможен везде. Используйте засоление как фильтр для первичного отбора. Карта показывает зоны с более высоким или низким риском, а решение всё равно начинается с выезда и анализа почвы.
 
-        If a salty site must be used, treat the soil first. Standard steps include flushing out excess salt with irrigation, adding gypsum or organic matter, and improving drainage. These are recognized methods, though this project has no field outcome data yet on how well they work at these specific sites. Planting directly into untreated salty ground, without any of this, is a poor bet. In every case, the map is a starting point for deciding where to look next. It is not a substitute for a soil test and a trained eye in the field.
+        Если засолённый участок всё же нужно использовать, почву сначала готовят: промывают соли, вносят гипс или органику, улучшают дренаж. Это обычные методы, но у проекта пока нет полевых данных о том, насколько хорошо они работают именно здесь. Сажать прямо в неподготовленную сильно засолённую почву рискованно. Карта помогает выбрать, куда смотреть дальше, но не заменяет почвенный анализ и работу специалиста в поле.
         """
     )
     st.caption(
-        "This finding is supported by the project's 70-profile V6 salinity model plus a small set of field "
-        "records on saxaul presence/absence. See 'Saxaul-specific evidence' in the Technical tab for the full numbers."
+        "Этот вывод опирается на модель V6 по 70 почвенным профилям и небольшой набор полевых записей о наличии или отсутствии саксаула. Полные числа собраны в техническом разделе о саксауле."
     )
 
 # ══════════════════════════════════════════════════════════════════════
@@ -592,76 +594,75 @@ with tab_analytics:
 # ══════════════════════════════════════════════════════════════════════
 
 with tab_dev:
-    st.subheader("How far to trust this map")
+    st.subheader("Насколько можно доверять карте")
     st.info(
-        "This tab shows how the map was checked and where its limits are. The headline result is the V6 "
-        "salinity risk score; the field-trip task grid and its KML files are derived from the same V6 zones "
-        "(candidate + moderate risk, Kazakhstan-clipped). A separate frozen 10 m pipeline only supplies the "
-        "screening summary numbers."
+        "Здесь показано, как проверяли карту и где её границы. Главный результат — оценка риска засоления V6. "
+        "Сетка участков для выезда и KML-файлы построены по тем же зонам V6: перспективные участки и умеренный риск "
+        "в пределах Казахстана. Отдельный замороженный 10-метровый конвейер даёт только сводные числа для отбора."
     )
     safety_rows = [
         {
-            "Good use": "Picking places for a field check",
-            "Bad use": "Treating green zones as a finished planting plan",
-            "Verify in the field": "Topsoil salt, road access, actual water and vegetation, coordinates",
+            "Как использовать": "Выбирать места для полевой проверки",
+            "Как не использовать": "Считать зелёные зоны готовым планом посадки",
+            "Что проверить в поле": "Соль в верхнем слое почвы, подъезд, воду и растительность на месте, координаты",
         },
         {
-            "Good use": "Comparing sites within one district",
-            "Bad use": "Comparing distant districts head-to-head without calibration",
-            "Verify in the field": "The local salinity background, plus fresh control samples",
+            "Как использовать": "Сравнивать участки внутри одного района",
+            "Как не использовать": "Сравнивать далёкие районы напрямую без калибровки",
+            "Что проверить в поле": "Местный фон засоления и свежие контрольные пробы",
         },
         {
-            "Good use": "Driving a survey route from the KML file",
-            "Bad use": "Reading the KML file as approval to plant",
-            "Verify in the field": "Site boundaries, and whether the equipment and logistics actually fit",
+            "Как использовать": "Прокладывать маршрут обследования по KML-файлу",
+            "Как не использовать": "Считать KML-файл разрешением на посадку",
+            "Что проверить в поле": "Границы участка, технику, доступность и реальную логистику",
         },
     ]
     st.dataframe(pd.DataFrame(safety_rows), hide_index=True, width="stretch")
 
-    st.subheader("What would make the model better")
+    st.subheader("Что улучшит модель")
 
     roadmap_rows = [
         {
-            "Priority": 1,
-            "What to do": "Collect more field samples inside the seabed area",
-            "What is needed": "The model trains on 70 profiles, but few check points fall inside the target Aral seabed contour",
-            "Why": "Fresh field data inside the target area is the main limit on accuracy — not the interface.",
+            "Приоритет": 1,
+            "Что сделать": "Собрать больше почвенных проб внутри высохшего дна",
+            "Что нужно": "Модель обучена на 70 профилях, но внутри целевого контура Арала точек проверки мало",
+            "Зачем": "Свежие полевые данные внутри целевой зоны сильнее всего повысят точность. Интерфейс здесь не главное.",
         },
         {
-            "Priority": 2,
-            "What to do": "Calibrate salinity levels across districts",
-            "What is needed": "Reference samples in different blocks to build a shared scale (accuracy drops noticeably when distant districts are pooled; see \"Spatial validation\")",
-            "Why": "Within one site the model ranks correctly, but the absolute level drifts between districts.",
+            "Приоритет": 2,
+            "Что сделать": "Откалибровать уровни засоления между районами",
+            "Что нужно": "Эталонные пробы в разных блоках, чтобы собрать общую шкалу. При объединении дальних районов точность заметно падает.",
+            "Зачем": "Внутри одного участка модель ранжирует нормально, но абсолютный уровень между районами смещается.",
         },
         {
-            "Priority": 3,
-            "What to do": "Match soil samples to the imagery date",
-            "What is needed": "Fresh sampling taken close to the date of the satellite imagery (the lab data is from 2012-2014)",
-            "Why": "Right now the satellite-to-salt link leans on data collected years apart; matching the dates would firm it up.",
+            "Приоритет": 3,
+            "Что сделать": "Согласовать даты проб и спутниковых снимков",
+            "Что нужно": "Свежие пробы, взятые близко к дате съёмки. Сейчас лабораторные данные относятся к 2012-2014 годам.",
+            "Зачем": "Связь между снимком и солью станет надёжнее, если данные собраны в один период.",
         },
         {
-            "Priority": 4,
-            "What to do": "Independent check against the 2020/2021 field campaign",
-            "What is needed": "Keep the 2020/2021 samples as a separate test set, never mixed into the 2012-2014 training data",
-            "Why": "A clean, independent check with no leakage between data sets.",
+            "Приоритет": 4,
+            "Что сделать": "Проверить модель на кампании 2020-2021 годов",
+            "Что нужно": "Держать эти пробы отдельным тестовым набором и не смешивать с обучением 2012-2014 годов",
+            "Зачем": "Так получится независимая проверка без утечки между наборами данных.",
         },
         {
-            "Priority": 5,
-            "What to do": "Link the score to planting survival",
-            "What is needed": "Survival data from real saxaul plantings, site by site",
-            "Why": "This is what would turn \"salinity risk\" into a verified forecast of planting success.",
+            "Приоритет": 5,
+            "Что сделать": "Связать оценку с реальной приживаемостью саксаула",
+            "Что нужно": "Данные по выживаемости посадок на каждом участке",
+            "Зачем": "Только так риск засоления можно превратить в проверенный прогноз успешности посадки.",
         },
     ]
-    with st.expander("Model and data improvement roadmap", expanded=False):
+    with st.expander("План улучшения модели и данных", expanded=False):
         st.dataframe(pd.DataFrame(roadmap_rows), hide_index=True, width="stretch")
 
-    with st.expander("Where the KML site contours come from"):
+    with st.expander("Откуда берутся KML-контуры участков"):
         st.markdown(
-            "The site contours and road distances in the **Plan a field trip** tab come from a separate "
-            "10 m Sentinel-2 screening pipeline. It rules out water and shadow, steep terrain, existing "
-            "vegetation, and ground that looks salty from orbit; whatever survives those filters is grouped "
-            "into contours of 10 ha and up, matched to the OSM road network, and exported as KML files. "
-            "Those contours organize the driving — the salinity call always stays with the V6 score and the soil sample."
+            "Контуры участков и расстояния до дорог во вкладке **План полевых работ** приходят из отдельного "
+            "10-метрового анализа Sentinel-2. Он отсекает воду и тень, крутые склоны, существующую растительность "
+            "и поверхности, которые со спутника выглядят засолёнными. Оставшиеся территории собираются в контуры "
+            "от 10 га, сопоставляются с дорожной сетью OSM и выгружаются в KML. Эти контуры помогают организовать выезд. "
+            "Оценка засоления всё равно остаётся за V6 и почвенной пробой."
         )
 
     # ── V6 lab-data science layer ──────────────────────────────────────
@@ -669,105 +670,107 @@ with tab_dev:
     v6_metrics = v6_model_metrics(v6)
     if v6["salinity"]:
         st.markdown("---")
-        st.subheader("V6 — the current salinity layer (70 soil profiles)")
+        st.subheader("V6 — текущий слой риска засоления (70 почвенных профилей)")
         spatial = v6.get("spatial", {})
         sm = spatial.get("salinity_model", {})
         aoi_split = v6_aoi_split(v6)
         st.caption(
-            "The main screening layer. It is trained on soil salinity actually measured in the lab — "
-            "70 soil profiles with coordinates from the Pachikin-Kozybaeva report (2012-2014)."
+            "Это основной слой предварительного отбора. Он обучен на лабораторно измеренной засолённости: "
+            "70 почвенных профилей с координатами из отчёта Пачикина-Козыбаевой за 2012-2014 годы."
         )
         v6_summary_rows = [
             {
-                "Question": "What V6 checks",
-                "Answer": "Salinity risk in the topsoil — not saxaul survival",
+                "Вопрос": "Что проверяет V6",
+                "Ответ": "Риск засоления верхнего слоя почвы, а не выживаемость саксаула",
             },
             {
-                "Question": "How to read the score",
-                "Answer": "Higher score, lower expected salt risk. It sets field-visit priority, not a planting plan",
+                "Вопрос": "Как читать оценку",
+                "Ответ": "Чем выше оценка, тем ниже ожидаемый риск соли. Это приоритет для выезда, а не план посадки",
             },
             {
-                "Question": "What it's built on",
-                "Answer": f"{v6_metrics.get('n') or 70} soil profiles with lab-measured salt content",
+                "Вопрос": "На чём построена модель",
+                "Ответ": f"{v6_metrics.get('n') or 70} почвенных профилей с лабораторно измеренным содержанием солей",
             },
             {
-                "Question": "Where to be careful",
-                "Answer": "Don't compare distant districts head-to-head without local calibration",
+                "Вопрос": "Где нужна осторожность",
+                "Ответ": "Не сравнивайте далёкие районы напрямую без локальной калибровки",
             },
         ]
         st.dataframe(pd.DataFrame(v6_summary_rows), hide_index=True, width="stretch")
 
         st.markdown(
-            "**In plain terms:** V6 hunts for ground with less salt. "
-            "A high score means the salt risk looks low — it doesn't guarantee a planting will survive there."
+            "**Простыми словами:** V6 ищет участки, где соли, вероятно, меньше. "
+            "Высокая оценка говорит о низком солевом риске, но не гарантирует, что посадка приживётся."
         )
-        with st.expander("For technical users: V6 metrics"):
+        with st.expander("Для технических пользователей: показатели V6"):
             c1, c2, c3, c4 = st.columns(4)
             c1.metric(
-                "Profiles (training)",
+                "Профили (обучение)",
                 f"{v6_metrics.get('n') or '—'}",
-                help="Soil profiles with lab-measured topsoil salinity.",
+                help="Почвенные профили с лабораторно измеренной засолённостью верхнего слоя.",
             )
-            c2.metric("Saline (>1%)", f"{v6_metrics.get('n_saline') or '—'}")
+            c2.metric("Засолённые (>1%)", f"{v6_metrics.get('n_saline') or '—'}")
             loo = v6_metrics.get("auc")
             ci = v6_metrics.get("ci")
             c3.metric(
                 "AUC (LOO)",
                 fmt_metric(loo),
-                help="Leave-one-out AUC: how well the model separates saline points from non-saline ones.",
+                help="AUC с исключением по одной точке: насколько хорошо модель разделяет засолённые и незасолённые точки.",
             )
             c4.metric(
-                "95% interval",
+                "95% интервал",
                 f"{ci[0]:.3f}-{ci[1]:.3f}" if ci else "—",
-                help="Bootstrap confidence interval for the AUC. It stays above 0.5, so the relationship holds up.",
+                help="Бутстрэп-интервал для AUC. Он остаётся выше 0.5, значит связь не разваливается.",
             )
             st.markdown(
-                "The satellite moisture index (NDMI) tracks measured topsoil salinity "
-                "(Spearman rho ≈ +0.66, p < 1e-9, n=70). The V6 score is simply "
-                "`1 - probability of salinity`, used only to rank candidates."
+                "Спутниковый индекс влажности NDMI связан с измеренной засолённостью верхнего слоя "
+                "(rho Спирмена ≈ +0.66, p < 1e-9, n=70). Оценка V6 — это просто "
+                "`1 - вероятность засоления`; она нужна только для ранжирования участков."
             )
             af = spatial.get("independent_aralfield")
             if af:
                 st.markdown(
-                    f"**Independent check (AralField 2018, saxaul):** AUC {af.get('auc')}, "
-                    f"n={af.get('n')} ({af.get('n_present')} with saxaul), "
-                    f"interval {af.get('ci95')[0] if af.get('ci95') else '—'}-"
+                    f"**Независимая проверка (AralField 2018, саксаул):** AUC {af.get('auc')}, "
+                    f"n={af.get('n')} ({af.get('n_present')} с саксаулом), "
+                    f"интервал {af.get('ci95')[0] if af.get('ci95') else '—'}-"
                     f"{af.get('ci95')[1] if af.get('ci95') else '—'}. "
-                    "Too few points for a reliable estimate — read it as a directional signal, nothing more."
+                    "Точек слишком мало для надёжной оценки. Это только ориентир, не вывод."
                 )
 
-        with st.expander("Saxaul-specific evidence: solonchaks and salinity (technical detail)"):
+        with st.expander("Данные о саксауле, солончаках и засолении (технические детали)"):
             st.markdown(
                 """
-**Salinity model (well-supported, this is the main V6 layer):**
-- Model: L2-regularized logistic regression, single predictor = satellite NDMI at 30 m resolution.
-- Training data: 70 georeferenced soil profiles (Pachikin/Kozybaeva soil report, 2012-2014); target = topsoil total salts > 1%; 27/70 profiles positive.
-- Performance: leave-one-out AUC 0.682, 95% CI [0.556, 0.802].
-- Known caveat (regional calibration drift): pooled spatial leave-block-out AUC is only 0.385, while mean per-block spatial AUC is 0.792. The model ranks salinity risk reliably *within* a local area but should not be used to compare absolute salinity levels *across* distant regions without local calibration.
-- Only about 15 of the 70 training profiles fall inside the actual 1960 seabed AOI; the rest are wider-region training support, not independent in-AOI validation. In-AOI LOO AUC is 0.614; out-of-AOI is 0.671.
+**Модель засоления — основной слой V6:**
 
-**Saxaul-specific evidence (weak, exploratory only, NOT decision-grade):**
-- Only 6 georeferenced positive saxaul field labels exist in the entire dataset (out of 70 profiles), against a much larger pool of negatives, weak negatives, and excluded rows.
-- A direct NDMI+MSAVI to saxaul-suitability classifier scores LOO AUC approximately 0.48, statistically indistinguishable from chance. It is explicitly documented in the project as "exploratory only, not for decisions."
-- Directional soil/remote-sensing correlations with saxaul suitability (all n_pos = 6 unless noted) match known saxaul ecology but fall below the project's own stability gates (MIN_N=12, MIN_N_POS=8, MIN_AUC=0.62) and are flagged `indicative_only=true`:
-  - Low chloride (Cl <= 0.059%): oriented AUC 0.733, n=49, n_pos=6.
-  - Low total salts (<= 0.311%): oriented AUC 0.642, n=56, n_pos=6.
-  - Low exchangeable sodium (<= 0.262): oriented AUC 0.692, n=52, n_pos=6.
-  - Higher carbonate/CaCO3 (>= 5.3%): oriented AUC 0.855, n=26, n_pos=3 (smallest, most fragile sample).
-  - Sandier texture (sand >= 62.56%): oriented AUC 0.695, n=47, n_pos=5.
-  - Lower NDMI/NDWI (drier surface signal): oriented AUC 0.647 (NDMI) / 0.737 (NDWI), n_pos=6.
-- Spearman correlations against the y_suitable label (ML_DATASET_QA.md): top_caco3_pct rho=+0.39, p=0.05, n=26 (the only nominally significant one); salt_cl_pct rho=-0.27, p=0.07, n=49; rs30_ndwi rho=-0.25, p=0.06, n=56; exch_na/exch_sum rho=-0.21, p=0.13, n=52; sand_pct rho=+0.21, p=0.16, n=47. All directions are ecologically coherent (saxaul favors carbonate, sandy, low-chloride, low-sodium substrates) but magnitudes and significance are weak given n approximately 6 positives.
+Модель — логистическая регрессия с L2-регуляризацией. В ней один предиктор: спутниковый NDMI с разрешением 30 м. Обучение построено на 70 геопривязанных почвенных профилях из отчёта Пачикина-Козыбаевой за 2012-2014 годы. Целевая метка — содержание солей в верхнем слое почвы выше 1%; таких профилей 27 из 70. Качество по leave-one-out AUC: 0.682, 95% ДИ [0.556, 0.802].
 
-**Labeling methodology note (important for interpreting the examples below):** per the project's own QA rules (`SAXAUL_LABELS_QA.md`), hard negative labels are restricted to documented plantation failures and genuinely barren ground. They are deliberately **not** assigned on the basis of measured salinity, to avoid baking a salinity assumption into the very labels the model is supposed to learn from. This means some of the "no saxaul" field records below are not, in the project's own numbers, high-salinity sites, even though they look salt-related at first glance.
+Главное ограничение — региональный сдвиг калибровки. Объединённая пространственная проверка leave-block-out даёт AUC 0.385, среднее AUC внутри отдельных блоков — 0.792. Внутри одной местности модель ранжирует риск засоления заметно лучше, чем при прямом сравнении далёких районов. Около 15 из 70 обучающих профилей лежат внутри реального контура дна Арала 1960 года. Остальные помогают обучению по более широкому Приаралью, но не являются независимой проверкой внутри целевой зоны. LOO AUC внутри AOI — 0.614, вне AOI — 0.671.
 
-**Concrete field examples underlying the headline claim:**
-- Pit 08/14 (2014): "Такыр без растительности" (a barren takyr, a bare clay flat, with no vegetation at all). Measured topsoil salt content here is 0.43%, below the project's own 1% saline threshold, so this is a "barren ground" negative, not a confirmed high-salinity negative. Labeled negative/strong, absent_recorded.
-- AralField pit S134 (separate external validation dataset, not part of the 70-profile lab set): "Former Sorkol lake bed, very saline, solonchak"; haloxylon = 0 (absent). This is a genuinely salt-linked negative example.
-- Pit 13/13 (2013): documented planting failure, "Сажали саксаул, ничего прижилось" (saxaul was planted, nothing survived). Measured topsoil salt content is 1.004%, just over the project's 1% saline threshold, so this is a genuinely salt-linked negative example. Labeled negative/strong, gold record.
-- Pit 24/14 (2014): documented planting failure on ploughed/disturbed ground, "Посадка неудачно прижилась, меньше, чем на естественном участке, только землю испортили" (planting failed to establish well, worse than the natural stand, and degraded the soil). Measured topsoil salt content is only 0.143%, well below the 1% threshold; the field note attributes the failure to ploughing and soil disturbance, not to measured salt. Labeled negative/strong, gold record.
-- Pit 4А/12 (2012): positive/strong presence label; vegetation description "кустарниково-солянковой растительностью (кустарники - тамарикс, саксаул, селитрянка; растительность - солянка супротивнолистная, лебеда солончаковая и др.)", i.e. a shrub-saltwort community including live saxaul growing alongside tamarisk, Nitraria, and other halophytes on salt-affected ground. This is the field counter-example showing salinity is a limiting factor that reduces the odds, not a modeled or dataset-confirmed absolute exclusion rule.
+**Данные именно о саксауле слабее:**
 
-**Explicit caveat:** the salinity model (LOO AUC 0.682, CI [0.556, 0.802], n=70) is reasonably supported evidence about salinity distribution. The saxaul-specific correlations, thresholds, and field examples above are indicative screening hints only, built on just 6 positive field records (with a small number of separately sourced negative field examples, not all of which are actually high-salinity per the project's own numbers, as noted above). They must not be presented with the same confidence as the salinity model, nor described as predicting saxaul survival or proving planting suitability anywhere on the map.
+Во всей базе есть только 6 геопривязанных положительных полевых меток саксаула из 70 профилей. Прямой классификатор пригодности саксаула по NDMI+MSAVI получил LOO AUC около 0.48, то есть почти не отличился от случайного угадывания. В проекте он прямо помечен как исследовательский и не используется для решений.
+
+Связи между почвенными свойствами, спутниковыми индексами и саксаулом идут в экологически разумную сторону, но не проходят внутренние пороги устойчивости проекта (MIN_N=12, MIN_N_POS=8, MIN_AUC=0.62). Низкие хлориды, меньше солей, меньше обменного натрия, больше карбонатов и более песчаный состав выглядят лучше для саксаула, но при шести положительных точках это только ориентир.
+
+Корреляции Спирмена с меткой y_suitable тоже читаются как подсказки, а не как доказательство: top_caco3_pct rho=+0.39, p=0.05, n=26; salt_cl_pct rho=-0.27, p=0.07, n=49; rs30_ndwi rho=-0.25, p=0.06, n=56; exch_na/exch_sum rho=-0.21, p=0.13, n=52; sand_pct rho=+0.21, p=0.16, n=47.
+
+**Как ставились отрицательные метки:**
+
+По правилам QA проекта (`SAXAUL_LABELS_QA.md`) сильные отрицательные метки ставились только там, где были документированные неудачные посадки или действительно голая земля. Их не ставили просто из-за высокой засолённости, чтобы не зашить это предположение в обучающие данные. Поэтому часть записей без саксаула не является участками с высокой солью по измерениям проекта.
+
+**Полевые примеры:**
+
+Разрез 08/14 (2014): "Такыр без растительности". В верхнем слое 0.43% солей, ниже порога 1%. Это отрицательная метка по голой земле, а не подтверждённый пример высокой засолённости.
+
+Разрез S134 из AralField: "Former Sorkol lake bed, very saline, solonchak"; haloxylon = 0. Это отдельный внешний набор, не входящий в 70 профилей, и это реальный пример отсутствия саксаула на сильно засолённом месте.
+
+Разрез 13/13 (2013): документированная неудачная посадка, "Сажали саксаул, ничего прижилось". Содержание солей 1.004%, чуть выше порога 1%.
+
+Разрез 24/14 (2014): неудачная посадка на распаханном нарушенном участке. Содержание солей 0.143%, заметно ниже порога. Полевое описание связывает проблему с нарушением почвы, а не с измеренной солью.
+
+Разрез 4А/12 (2012): сильная положительная метка. Описание растительности включает тамарикс, саксаул, селитрянку и другие галофиты. Этот пример показывает: засоление снижает шансы, но не делает саксаул невозможным автоматически.
+
+**Ограничение интерпретации:** модель засоления (LOO AUC 0.682, ДИ [0.556, 0.802], n=70) достаточно обоснована для карты риска соли. Данные о самом саксауле, пороги и полевые примеры — только подсказки для отбора. Их нельзя подавать как прогноз приживаемости или доказательство пригодности конкретного участка.
                 """
             )
 
@@ -776,24 +779,22 @@ with tab_dev:
             pb = sm.get("spatial_lbo_perblock_auc")
             pooled = sm.get("spatial_lbo_pooled_auc")
             sign = sm.get("within_block_sign_positive", "—")
-            with st.expander("Spatial validation (an honest look at the limits)", expanded=False):
+            with st.expander("Пространственная проверка: где границы модели", expanded=False):
                 st.markdown(
                     f"""
-                    Nearby soil points tend to resemble each other, which can flatter a model's accuracy.
-                    To rule that out, we cut the data into spatial blocks (~{sm.get('block_km', 20):.0f} km)
-                    and retrained the model with each block held out in turn.
+                    Близкие почвенные точки часто похожи друг на друга, и это может завышать оценку качества.
+                    Чтобы проверить модель жёстче, данные разделили на пространственные блоки примерно по {sm.get('block_km', 20):.0f} км
+                    и каждый раз обучали модель без одного блока.
 
-                    - **Average AUC per block: {pb}** — within each site, the model ranks
-                      saline and non-saline points correctly.
-                    - Pooled AUC across all blocks: {pooled} — lower, because **the baseline salinity
-                      level differs between districts** (one block is almost entirely saline,
-                      another almost entirely not). That's a cross-region calibration gap, **not
-                      a loss of signal**.
-                    - The moisture-to-salt relationship keeps its positive sign in **{sign}** of the tested blocks.
+                    - **Среднее AUC по блокам: {pb}**. Внутри отдельных участков модель правильно ранжирует
+                      засолённые и незасолённые точки.
+                    - Общее AUC по всем блокам: {pooled}. Оно ниже, потому что **базовый уровень засоления
+                      отличается между районами**: один блок почти весь засолён, другой почти нет. Это проблема
+                      межрегиональной калибровки, а не исчезновение сигнала.
+                    - Связь между NDMI и солью сохраняет положительный знак в **{sign}** проверенных блоках.
 
-                    The takeaway: use the model to rank sites within a district. Putting distant
-                    districts on one absolute scale needs extra calibration — a limit we'd rather
-                    state here than hide.
+                    Вывод: используйте модель для ранжирования участков внутри одного района. Для сравнения далёких
+                    районов по одной абсолютной шкале нужна дополнительная калибровка.
                     """
                 )
 
@@ -801,25 +802,25 @@ with tab_dev:
         stats = v6.get("suit_stats", {})
         zone_ha = stats.get("zone_area_ha", {})
         if zone_ha:
-            names = {"1": "1 Candidate (low salinity)", "3": "3 Moderate salinity",
-                     "4": "4 Strong salinity", "10": "10 Vegetation", "0": "0 Water/no data"}
+            names = {"1": "1 Перспективная зона (низкое засоление)", "3": "3 Умеренное засоление",
+                     "4": "4 Сильное засоление", "10": "10 Растительность", "0": "0 Вода/нет данных"}
             land = sum(float(zone_ha.get(k, 0)) for k in ("1", "3", "4", "10"))
             rows = []
             for k in ("1", "3", "4", "10", "0"):
                 ha = float(zone_ha.get(k, 0))
                 rows.append({
-                    "V6 zone": names[k],
-                    "Area, ha": f"{ha:,.0f}",
-                    "% of land": f"{ha / land * 100:.1f}%" if (land and k != "0") else "—",
+                    "Зона V6": names[k],
+                    "Площадь, га": fmt_int(ha),
+                    "% суши": f"{ha / land * 100:.1f}%" if (land and k != "0") else "—",
                 })
-            st.markdown("**V6 zones on the full-coverage 30 m layer (no gaps):**")
+            st.markdown("**Зоны V6 на сплошном 30-метровом слое:**")
             st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
             vf = stats.get("valid_fraction_of_aoi")
             st.caption(
-                f"The 30 m layer scores {vf*100:.0f}% of the study area. "
-                "Zones 3 and 4 aren't separate categories — they're steps on one validated salinity scale."
+                f"30-метровый слой оценивает {vf*100:.0f}% исследуемой территории. "
+                "Зоны 3 и 4 — не разные типы земель, а ступени одной проверенной шкалы риска засоления."
                 if vf is not None else
-                "Zones 3 and 4 aren't separate categories — they're steps on one validated salinity scale."
+                "Зоны 3 и 4 — не разные типы земель, а ступени одной проверенной шкалы риска засоления."
             )
 
         # ground-truth + independent validation
@@ -827,28 +828,28 @@ with tab_dev:
         if pv:
             det = pv.get("saline_detector_zone34", {})
             cc1, cc2 = st.columns(2)
-            cc1.metric("Points covered by V6", f"{pv.get('v6_scored_nonwater', '—')}/70",
-                       help="Ground-truth points (excluding water) that land inside scored zones.")
+            cc1.metric("Точки, покрытые V6", f"{pv.get('v6_scored_nonwater', '—')}/70",
+                       help="Полевые точки без воды, которые попали в оценённые зоны.")
             sens_ci = det.get("sensitivity_ci95")
             spec_ci = det.get("specificity_ci95")
             spec_n = det.get("specificity_n")
             sens_n = det.get("sensitivity_n")
-            cc2.metric("Salinity detector",
-                       f"sensitivity {det.get('sensitivity', '—')} / specificity {det.get('specificity', '—')}",
-                       help="How well zones 3/4 flag points with salinity above 1%. "
-                            "Read with the sample sizes and 95% intervals below — a specificity of 1.0 "
-                            "on a handful of negatives is not a validated perfect screen.")
+            cc2.metric("Выявление засоления",
+                       f"чувств. {det.get('sensitivity', '—')} / специф. {det.get('specificity', '—')}",
+                       help="Насколько хорошо зоны 3/4 находят точки с засолением выше 1%. "
+                            "Читайте вместе с размерами выборки и 95% интервалами ниже: специфичность 1.0 "
+                            "на нескольких отрицательных точках не означает идеальный фильтр.")
             if spec_ci and sens_ci:
                 st.caption(
-                    f"Sensitivity {det.get('sensitivity','—')} on n={sens_n} (95% CI "
-                    f"[{sens_ci[0]}, {sens_ci[1]}]); specificity {det.get('specificity','—')} on only "
-                    f"n={spec_n} negatives (95% CI [{spec_ci[0]}, {spec_ci[1]}] — wide, small sample)."
+                    f"Чувствительность {det.get('sensitivity','—')} при n={sens_n} (95% ДИ "
+                    f"[{sens_ci[0]}, {sens_ci[1]}]); специфичность {det.get('specificity','—')} только на "
+                    f"n={spec_n} отрицательных точках (95% ДИ [{spec_ci[0]}, {spec_ci[1]}] — широкий интервал, малая выборка)."
                 )
             n_in = aoi_split.get("n_in")
             n_out = aoi_split.get("n_out")
             st.caption(
-                f"Of the {v6_metrics.get('n') or 70} training profiles, {n_out or 'some'} lie outside the 1960 sea boundary, "
-                f"leaving about {n_in or pv.get('v6_scored_nonwater', '—')} points inside the target seabed for checking. "
-                f"Full table: `{rel_path(V6_PIT_TABLE_PATH)}`."
+                f"Из {v6_metrics.get('n') or 70} обучающих профилей {n_out or 'часть'} лежат за границей моря 1960 года. "
+                f"Внутри целевого высохшего дна остаётся около {n_in or pv.get('v6_scored_nonwater', '—')} точек для проверки. "
+                f"Полная таблица: `{rel_path(V6_PIT_TABLE_PATH)}`."
             )
 

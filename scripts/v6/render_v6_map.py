@@ -64,12 +64,12 @@ PALETTE = {
     4:  (153, 27, 27, 220),    # strong salinity           #991B1B
     10: (167, 243, 208, 220),  # vegetation                #A7F3D0
 }
-DISPLAY_NAMES_EN = {
-    1: "Candidate zone (low salinity)",
-    3: "Moderate salinity",
-    4: "Strong salinity",
-    10: "Existing vegetation",
-    0: "Water / no data",
+DISPLAY_NAMES_RU = {
+    1: "Перспективная зона (низкое засоление)",
+    3: "Умеренное засоление",
+    4: "Сильное засоление",
+    10: "Существующая растительность",
+    0: "Вода / нет данных",
 }
 
 
@@ -255,11 +255,11 @@ def metric_note(metrics: dict) -> str:
     auc = metrics.get("auc")
     ci = metrics.get("ci")
     n = metrics.get("n")
-    auc_txt = f"LOO AUC {auc:.3f}" if auc is not None else "LOO AUC n/a"
+    auc_txt = f"LOO AUC {auc:.3f}" if auc is not None else "LOO AUC н/д"
     if ci:
-        auc_txt += f", CI [{ci[0]:.3f}, {ci[1]:.3f}]"
-    n_txt = f"{n} lab soil profiles" if n else "lab soil profiles"
-    return f"30 m · salinity model from {n_txt} ({auc_txt})"
+        auc_txt += f", ДИ [{ci[0]:.3f}, {ci[1]:.3f}]"
+    n_txt = f"{n} лабораторных почвенных профилей" if n else "лабораторные почвенные профили"
+    return f"30 м · модель засоления по {n_txt} ({auc_txt})"
 
 
 def decision_help_html(metrics: dict) -> str:
@@ -305,15 +305,15 @@ def decision_help_html(metrics: dict) -> str:
 </style>
 <div id="decision-help" style="position:fixed; top:12px; right:12px; z-index:9999;
             padding:10px 12px; font-size:12px; width:250px; line-height:1.35;">
-    <div style="font-weight:700; font-size:12.5px; margin-bottom:3px; color:#0F172A;">What the selected spot shows</div>
+    <div style="font-weight:700; font-size:12.5px; margin-bottom:3px; color:#0F172A;">Что показывает выбранная точка</div>
     <div id="decision-main" style="color:#334155;">
-        Hover over a colored area on the map, or click it.
+        Наведите курсор на окрашенный участок карты или щёлкните по нему.
     </div>
     <div id="decision-detail" style="margin-top:5px; color:#64748B; font-size:11px;">
-        The map will translate the color into a plain result: salinity risk, a 0-100 score, and the next step for a field visit.
+        Карта переведёт цвет в понятный результат: риск засоления, оценку от 0 до 100 и следующий шаг для выезда.
     </div>
     <div style="margin-top:7px; color:#94A3B8; font-size:10px; border-top:1px solid #E2E8F0; padding-top:5px;">
-        {metric_note(metrics)}. Preliminary screening, not permission to plant.
+        {metric_note(metrics)}. Предварительный отбор, не разрешение на посадку.
     </div>
 </div>
 """
@@ -331,42 +331,42 @@ def interaction_script(map_name: str, bounds: list[list[float]], lookup_uri: str
   const ctx = canvas.getContext('2d', {{ willReadFrequently: true }});
   const img = new Image();
   const bounds = {{south:{south:.12f}, west:{west:.12f}, north:{north:.12f}, east:{east:.12f}}};
-  const zoneInfo = {{
+    const zoneInfo = {{
     1: {{
-      title: 'Worth considering for a field visit',
-      label: 'Candidate zone: low salinity',
-      advice: 'First check road access and take a field soil sample. If the sample confirms low salt, this site can be ranked higher in the work plan.',
+      title: 'Стоит проверить в поле',
+      label: 'Перспективная зона: низкое засоление',
+      advice: 'Сначала проверьте подъезд и отберите почвенную пробу. Если анализ подтвердит низкую соль, участок можно поднять выше в плане работ.',
       color: '#065F46'
     }},
     3: {{
-      title: 'Needs caution',
-      label: 'Moderate salinity risk',
-      advice: 'Do not plan planting without a field soil sample. Suitable as a backup option or for a spot check.',
+      title: 'Нужна осторожность',
+      label: 'Умеренный риск засоления',
+      advice: 'Не планируйте посадку без почвенной пробы. Участок можно оставить как резервный вариант или точку для контрольной проверки.',
       color: '#B45309'
     }},
     4: {{
-      title: 'High salinity risk',
-      label: 'Strong salinity',
-      advice: 'A poor candidate for saxaul planting without soil remediation or a special reason. Best skipped in a normal field-visit plan.',
+      title: 'Высокий риск засоления',
+      label: 'Сильное засоление',
+      advice: 'Слабый кандидат для посадки саксаула без подготовки почвы или особой причины. В обычном плане выезда такой участок лучше пропустить.',
       color: '#991B1B'
     }},
     10: {{
-      title: 'Already has vegetation',
-      label: 'Not a new-planting zone',
-      advice: 'Vegetation is already visible here. Use this as a control or to survey current conditions, not as a primary new-planting site.',
+      title: 'Уже есть растительность',
+      label: 'Не зона для новых посадок',
+      advice: 'Здесь уже видна растительность. Используйте участок как контроль или для оценки текущего состояния, а не как основной участок новой посадки.',
       color: '#047857'
     }}
   }};
 
   function describeScore(score) {{
-    if (score >= 0.66) return 'high score of low salinity risk';
-    if (score >= 0.33) return 'medium score of low salinity risk';
-    return 'low score of low salinity risk';
+    if (score >= 0.66) return 'высокая оценка низкого риска засоления';
+    if (score >= 0.33) return 'средняя оценка низкого риска засоления';
+    return 'низкая оценка низкого риска засоления';
   }}
 
   function setEmpty() {{
-    panelMain.innerHTML = 'No score at this point';
-    panelDetail.innerHTML = 'Hover over a colored area inside the V6 layer. Transparent areas are not used for decisions.';
+    panelMain.innerHTML = 'В этой точке нет оценки';
+    panelDetail.innerHTML = 'Наведите курсор на окрашенную область слоя V6. Прозрачные зоны не используются для решений.';
   }}
 
   function update(latlng) {{
@@ -395,11 +395,11 @@ def interaction_script(map_name: str, bounds: list[list[float]], lookup_uri: str
     const scoreText = describeScore(score);
     panelMain.innerHTML = '<div style="font-weight:700;color:' + info.color + ';">' + info.title + '</div>' +
       '<div style="margin-top:4px;">' + info.label + '</div>' +
-      '<div style="margin-top:6px;"><b>Low-salinity-risk score:</b> ' + pct + ' out of 100 (' + scoreText + ')</div>' +
-      '<div><b>Estimated salinity risk (&gt;1%):</b> ' + saline + ' out of 100, per the V6 model</div>' +
-      '<div><b>Zone class:</b> ' + info.label + '</div>';
-    panelDetail.innerHTML = '<b>What to do:</b> ' + info.advice +
-      '<div style="margin-top:5px;color:#64748B;">Coordinates: ' + latlng.lat.toFixed(5) + ', ' + latlng.lng.toFixed(5) + '</div>';
+      '<div style="margin-top:6px;"><b>Оценка низкого риска засоления:</b> ' + pct + ' из 100 (' + scoreText + ')</div>' +
+      '<div><b>Примерный риск засоления (&gt;1%):</b> ' + saline + ' из 100 по модели V6</div>' +
+      '<div><b>Класс зоны:</b> ' + info.label + '</div>';
+    panelDetail.innerHTML = '<b>Что делать:</b> ' + info.advice +
+      '<div style="margin-top:5px;color:#64748B;">Координаты: ' + latlng.lat.toFixed(5) + ', ' + latlng.lng.toFixed(5) + '</div>';
   }}
 
   img.onload = function() {{
@@ -460,27 +460,27 @@ def main() -> None:
     folium.TileLayer(
         tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
         attr="Google Satellite",
-        name="Satellite imagery",  # human label in the layers control (not the raw URL)
+        name="Спутниковый снимок",  # human label in the layers control (not the raw URL)
         control=False,
     ).add_to(m)
     map_name = m.get_name()
 
     folium.raster_layers.ImageOverlay(
         image=zrgba, bounds=bounds, opacity=0.80,
-        name="V6 salinity risk zones", show=True, pixelated=True,
+        name="Зоны риска засоления V6", show=True, pixelated=True,
     ).add_to(m)
 
     if score_ok:
         folium.raster_layers.ImageOverlay(
             image=srgba, bounds=bounds, opacity=0.80,
-            name="V6 score: higher = lower salinity risk (0..1)", show=False, pixelated=True,
+            name="Оценка V6: выше значит меньше риск засоления (0..1)", show=False, pixelated=True,
         ).add_to(m)
 
     aoi_feature = load_aoi_boundary_geojson()
     if aoi_feature is not None:
         folium.GeoJson(
             aoi_feature,
-            name="AOI boundary (1960 shoreline)",
+            name="Граница области (береговая линия 1960 года)",
             style_function=lambda f: {
                 "color": "#38BDF8",
                 "weight": 1.5,
@@ -499,7 +499,7 @@ def main() -> None:
     if kz_feature is not None:
         folium.GeoJson(
             kz_feature,
-            name="Kazakhstan border (restoration programme area)",
+            name="Граница Казахстана (зона программы восстановления)",
             style_function=lambda f: {
                 "color": "#F59E0B",
                 "weight": 2.0,
@@ -517,27 +517,26 @@ def main() -> None:
     legend = """
 <div id="v6-map-legend" style="position:fixed; bottom:24px; left:12px; z-index:9999;
             padding:8px 11px; font-size:11px; max-width:200px; line-height:1.45; color:#334155;">
-    <b style="font-size:11.5px; color:#0F172A;">Legend</b><br>
+    <b style="font-size:11.5px; color:#0F172A;">Легенда</b><br>
 """
     for cls in (1, 3, 4, 10, 0):
         r, g, b, a = PALETTE[cls]
         sw = "background:#ffffff;border:1px solid #bbb;" if cls == 0 else f"background:rgb({r},{g},{b});"
         legend += (f'<span style="display:inline-block;width:10px;height:10px;'
                    f'{sw}border-radius:2px;margin-right:5px;"></span>'
-                   f'{DISPLAY_NAMES_EN[cls]}<br>')
+                   f'{DISPLAY_NAMES_RU[cls]}<br>')
     legend += """
     <div style="height:8px; margin:7px 0 3px 0; border-radius:999px;
                 background:linear-gradient(90deg,#991B1B 0%,#FDE68A 50%,#065F46 100%);
                 border:1px solid #ddd;"></div>
     <div style="display:flex; justify-content:space-between; font-size:10px; color:#64748B;">
-        <span>0 high salt risk</span><span>1 low risk</span>
+        <span>0 высокий риск</span><span>1 низкий риск</span>
     </div>
     <div style="margin-top:7px; padding-top:5px; border-top:1px solid #E2E8F0;
                 font-size:9.5px; color:#94A3B8; line-height:1.35;">
-        The zoned map is a conservative (high-sensitivity) salt screen: it flags
-        moderate/strong salinity earlier than the continuous score, so a spot can be
-        zoned &ldquo;risk&rdquo; while the 0&ndash;1 score is mid-range. Candidate = the
-        strictest low-salt class.
+        Зональная карта работает осторожно: она рано помечает умеренное и сильное
+        засоление, поэтому участок может попасть в класс риска, даже если непрерывная
+        оценка 0&ndash;1 выглядит средней. Перспективная зона — самый строгий низкосолевой класс.
     </div>
 </div>
 """
