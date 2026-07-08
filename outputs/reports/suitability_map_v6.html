@@ -87,7 +87,7 @@
 <div id="v6-map-legend" style="position:fixed; bottom:24px; left:12px; z-index:9999;
             padding:8px 11px; font-size:11px; max-width:200px; line-height:1.45; color:#334155;">
     <b style="font-size:11.5px; color:#0F172A;">Легенда</b><br>
-<span style="display:inline-block;width:10px;height:10px;background:rgb(6,95,70);border-radius:2px;margin-right:5px;"></span>Перспективная зона (низкое засоление)<br><span style="display:inline-block;width:10px;height:10px;background:rgb(253,230,138);border-radius:2px;margin-right:5px;"></span>Умеренное засоление<br><span style="display:inline-block;width:10px;height:10px;background:rgb(153,27,27);border-radius:2px;margin-right:5px;"></span>Сильное засоление<br><span style="display:inline-block;width:10px;height:10px;background:rgb(167,243,208);border-radius:2px;margin-right:5px;"></span>Существующая растительность<br><span style="display:inline-block;width:10px;height:10px;background:#ffffff;border:1px solid #bbb;border-radius:2px;margin-right:5px;"></span>Вода / нет данных<br>
+<span style="display:inline-block;width:10px;height:10px;background:rgb(6,95,70);border-radius:2px;margin-right:5px;"></span>Перспективная зона (низкая засолённость)<br><span style="display:inline-block;width:10px;height:10px;background:rgb(253,230,138);border-radius:2px;margin-right:5px;"></span>Умеренная засолённость<br><span style="display:inline-block;width:10px;height:10px;background:rgb(153,27,27);border-radius:2px;margin-right:5px;"></span>Высокая засолённость<br><span style="display:inline-block;width:10px;height:10px;background:rgb(167,243,208);border-radius:2px;margin-right:5px;"></span>Существующая растительность<br><span style="display:inline-block;width:10px;height:10px;background:#ffffff;border:1px solid #bbb;border-radius:2px;margin-right:5px;"></span>Водоёмы / отсутствуют данные<br>
     <div style="height:8px; margin:7px 0 3px 0; border-radius:999px;
                 background:linear-gradient(90deg,#991B1B 0%,#FDE68A 50%,#065F46 100%);
                 border:1px solid #ddd;"></div>
@@ -96,9 +96,8 @@
     </div>
     <div style="margin-top:7px; padding-top:5px; border-top:1px solid #E2E8F0;
                 font-size:9.5px; color:#94A3B8; line-height:1.35;">
-        Зональная карта работает осторожно: она рано помечает умеренное и сильное
-        засоление, поэтому участок может попасть в класс риска, даже если непрерывная
-        оценка 0&ndash;1 выглядит средней. Перспективная зона — самый строгий низкосолевой класс.
+        Карта используется для предварительной оценки риска засоления. Зоны 3 и 4
+        показывают разные уровни единой шкалы риска, а не окончательные категории пригодности.
     </div>
 </div>
 
@@ -143,15 +142,15 @@
 </style>
 <div id="decision-help" style="position:fixed; top:12px; right:12px; z-index:9999;
             padding:10px 12px; font-size:12px; width:250px; line-height:1.35;">
-    <div style="font-weight:700; font-size:12.5px; margin-bottom:3px; color:#0F172A;">Что показывает выбранная точка</div>
+    <div style="font-weight:700; font-size:12.5px; margin-bottom:3px; color:#0F172A;">Информация о выбранном участке</div>
     <div id="decision-main" style="color:#334155;">
-        Наведите курсор на окрашенный участок карты или щёлкните по нему.
+        Наведите курсор на окрашенную область в слое V6.
     </div>
     <div id="decision-detail" style="margin-top:5px; color:#64748B; font-size:11px;">
-        Карта переведёт цвет в понятный результат: риск засоления, оценку от 0 до 100 и следующий шаг для выезда.
+        Прозрачные области не используются при оценке.
     </div>
     <div style="margin-top:7px; color:#94A3B8; font-size:10px; border-top:1px solid #E2E8F0; padding-top:5px;">
-        30 м · модель засоления по 70 лабораторным почвенным профилям (LOO AUC 0.682, ДИ [0.556, 0.802]). Предварительный отбор, не разрешение на посадку.
+        Пространственное разрешение — 30 м. Модель оценки засолённости построена на основе 70 лабораторных почвенных профилей (LOO AUC 0.682, ДИ [0.556, 0.802]). Предназначена для предварительной оценки и не является основанием для принятия решения о посадке.
     </div>
 </div>
 
@@ -165,40 +164,40 @@
   const bounds = {south:43.499929486675, west:57.999816150705, north:46.517460357561, east:62.000193773946};
   const zoneInfo = {
     1: {
-      title: 'Стоит проверить в поле',
-      label: 'Перспективная зона: низкое засоление',
-      advice: 'Сначала проверьте подъезд и отберите почвенную пробу. Если анализ подтвердит низкую соль, участок можно поднять выше в плане работ.',
+      title: 'Рекомендуется для полевого обследования',
+      label: 'Перспективная зона с низкой засолённостью',
+      advice: 'Сначала оцените доступность участка и выполните отбор почвенных проб. Если результаты подтвердят низкую засолённость, участок может быть включён в число приоритетных объектов для проведения посадок.',
       color: '#065F46'
     },
     3: {
-      title: 'Нужна осторожность',
+      title: 'Требуется дополнительная проверка',
       label: 'Умеренный риск засоления',
-      advice: 'Не планируйте посадку без почвенной пробы. Участок можно оставить как резервный вариант или точку для контрольной проверки.',
+      advice: 'Не рекомендуется проводить посадку без предварительного отбора и анализа почвенных проб. Участок может рассматриваться как резервный вариант либо использоваться для опытных посадок после подтверждения благоприятных почвенных условий.',
       color: '#B45309'
     },
     4: {
       title: 'Высокий риск засоления',
-      label: 'Сильное засоление',
-      advice: 'Слабый кандидат для посадки саксаула без подготовки почвы или особой причины. В обычном плане выезда такой участок лучше пропустить.',
+      label: 'Высокая засолённость',
+      advice: 'Участок малопригоден для посадки саксаула без проведения мероприятий по снижению засолённости почвы или применения специальных технологий восстановления. Рекомендуется не включать данный участок в план первоочередных полевых обследований.',
       color: '#991B1B'
     },
     10: {
-      title: 'Уже есть растительность',
-      label: 'Не зона для новых посадок',
-      advice: 'Здесь уже видна растительность. Используйте участок как контроль или для оценки текущего состояния, а не как основной участок новой посадки.',
+      title: 'Участок уже покрыт растительностью',
+      label: 'Существующая растительность (не предназначен для новых посадок)',
+      advice: 'На участке уже имеется растительный покров. Его рекомендуется использовать в качестве контрольного участка для оценки текущего состояния экосистемы, а не для проведения новых посадок.',
       color: '#047857'
     }
   };
 
   function describeScore(score) {
-    if (score >= 0.66) return 'высокая оценка низкого риска засоления';
-    if (score >= 0.33) return 'средняя оценка низкого риска засоления';
-    return 'низкая оценка низкого риска засоления';
+    if (score >= 0.66) return 'высокая вероятность низкой засолённости';
+    if (score >= 0.33) return 'средняя вероятность низкой засолённости';
+    return 'низкая вероятность низкой засолённости';
   }
 
   function setEmpty() {
-    panelMain.innerHTML = 'В этой точке нет оценки';
-    panelDetail.innerHTML = 'Наведите курсор на окрашенную область слоя V6. Прозрачные зоны не используются для решений.';
+    panelMain.innerHTML = 'Для данной точки оценка отсутствует.';
+    panelDetail.innerHTML = 'Наведите курсор на окрашенную область в слое V6. Прозрачные области не используются при оценке.';
   }
 
   function update(latlng) {
@@ -227,10 +226,10 @@
     const scoreText = describeScore(score);
     panelMain.innerHTML = '<div style="font-weight:700;color:' + info.color + ';">' + info.title + '</div>' +
       '<div style="margin-top:4px;">' + info.label + '</div>' +
-      '<div style="margin-top:6px;"><b>Оценка низкого риска засоления:</b> ' + pct + ' из 100 (' + scoreText + ')</div>' +
-      '<div><b>Примерный риск засоления (&gt;1%):</b> ' + saline + ' из 100 по модели V6</div>' +
-      '<div><b>Класс зоны:</b> ' + info.label + '</div>';
-    panelDetail.innerHTML = '<b>Что делать:</b> ' + info.advice +
+      '<div style="margin-top:6px;"><b>Индекс благоприятности участка:</b> ' + pct + ' из 100 (' + scoreText + ')</div>' +
+      '<div><b>Предполагаемый риск засоления:</b> ' + saline + ' из 100 по модели V6</div>' +
+      '<div><b>Класс участка:</b> ' + info.label + '</div>';
+    panelDetail.innerHTML = '<b>Рекомендация:</b> ' + info.advice +
       '<div style="margin-top:5px;color:#64748B;">Координаты: ' + latlng.lat.toFixed(5) + ', ' + latlng.lng.toFixed(5) + '</div>';
   }
 

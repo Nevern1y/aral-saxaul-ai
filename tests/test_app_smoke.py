@@ -43,7 +43,7 @@ def test_three_tabs_present(app: AppTest) -> None:
 
 def test_title_rendered(app: AppTest) -> None:
     titles = [t.value for t in app.title]
-    assert any("Aral Saxaul" in t for t in titles)
+    assert any("Карта предварительной оценки засоленности почв" in t for t in titles)
 
 
 def test_renders_data_tables(app: AppTest) -> None:
